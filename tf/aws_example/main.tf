@@ -21,19 +21,6 @@ locals {
   region          = var.AWS_REGION
 }
 
-################################################################################
-# Security Group (for IPs with access to cluster)
-################################################################################
-
-#module "web_server_sg" {
-#  source = "terraform-aws-modules/security-group/aws//modules/http-80"
-#
-#  name        = "cluster-sg"
-#  description = "Security group for eks cluster within VPC"
-#  vpc_id      = module.vpc.vpc_id
-#
-#  ingress_cidr_blocks = var.ALLOWED_IPS
-#}
 
 ################################################################################
 # EKS Module
