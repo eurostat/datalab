@@ -1,0 +1,98 @@
+name: 'Terraform Apply'
+on:
+  workflow_dispatch:
+  # schedule:
+  #   - cron: "0 8 * * 1-5" # at the begging of the day (monday to friday)
+
+env:
+  AWS_DEFAULT_REGION: eu-central-1
+  AWS_DEFAULT_OUTPUT: json
+  X_ENVIRONMENT: dev
+  X_BACKEND_BUCKET: <remote-backend-bucket-name>
+  X_BACKEND_TFSTATE_KEY: datalab-tf-state
+  
+jobs:
+  # Use an open source tool (https://github.com/accurics/terrascan) to scan for security best practises
+  # It's the responsability of the developer to address the issues found by the terrascan - this tool can also be ran locally
+  # dev notes:
+  # - current terrascan latest scan versions is on v0.14 terraform templates, will suffice for features with backward compability
+  # - subsequent updates to security best practises should be taken into account (scan can be made outside the pipeline) and tf/ should be updated
+  # - other OPA rego policies can be implemented and used with terrascan
+  # - SARIF file is only uploaded to codeQL if that feature is active on the repository
+  terrascan_job:
+    runs-on: ubuntu-latest
+    name: terrascan-job
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
+      - name: Run Terrascan
+        id: terrascan
+        uses: accurics/terrascan-action@main
+        with:
+          iac_type: 'terraform'
+          iac_dir: 'tf/'
+          iac_version: 'v14'
+          policy_type: 'aws'
+          only_warn: true
+          sarif_upload: true
+
+      # uploads the SARIF only if codeQL is active
+      - name: Upload SARIF file
+        uses: github/codeql-action/upload-sarif@v1
+        with:
+          sarif_file: terrascan.sarif
+        continue-on-error: true
+
+  # Deploy the infrastructure with terraform (https://github.com/hashicorp/setup-terraform)
+  # dev notes:
+  # - current configuration deploys on AWS account, change the pipeline and tf/ templates if you have any other deployment environment
+  # - current configuration uses terraform 0.14, any compability issues with terraform 0.15 and 1.0 check the docs (https://www.terraform.io/upgrade-guides/1-0.html)
+  # - AWS authentication using AWS User (GitHub actions OIDC is in beta with possible breaking features in updates)
+  terraform_job:
+    needs: terrascan_job
+    runs-on: ubuntu-latest
+    name: terraform-job
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+      
+      # 1.  Auth with AWS access keys
+
+      - name: Configure AWS credentials User
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-region: ${{ env.AWS_DEFAULT_REGION }}
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+
+      # 2. Prepare tfvars for deployment
+      - name: Public IP
+        id: ip
+        uses: haythem/public-ip@v1.2
+          
+      - name: Fetch tfvars file
+        run: | 
+          aws s3 cp s3://${{ env.X_BACKEND_BUCKET }}/${{ env.X_ENVIRONMENT}}.tfvars ./tf/aws_example/
+          printf '\nEXTRA_ALLOWED_IPS = ["${{ steps.ip.outputs.ipv4 }}/32"]' >> ./tf/aws_example/${{ env.X_ENVIRONMENT}}.tfvars
+          
+      # 3. Set up Terraform and deploy things
+
+      - name: Set up terraform CLI
+        uses: hashicorp/setup-terraform@v1
+        with:
+          terraform_version: 0.14
+
+      - name: Terraform init
+        run: |
+          terraform init \
+          -backend-config="bucket=${{ env.X_BACKEND_BUCKET }}" \
+          -backend-config="key=${{ env.X_BACKEND_TFSTATE_KEY }}" \
+          -backend-config="region=${{ env.AWS_DEFAULT_REGION }}" 
+        working-directory: ./tf/aws_example
+
+      - name: Terraform apply
+        run: |
+          terraform apply -var-file="${{ env.X_ENVIRONMENT}}.tfvars" -auto-approve
+        working-directory: ./tf/aws_example

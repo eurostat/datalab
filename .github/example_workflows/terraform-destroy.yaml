@@ -1,0 +1,58 @@
+name: 'Terraform Destroy'
+on:
+  workflow_dispatch:
+  # schedule:
+  #   - cron: "0 19 * * 1-5" # at the end of the day (monday to friday)
+
+env:
+  AWS_DEFAULT_REGION: eu-central-1
+  AWS_DEFAULT_OUTPUT: json
+  X_ENVIRONMENT: dev
+  X_BACKEND_BUCKET: <remote-backend-bucket-name>
+  X_BACKEND_TFSTATE_KEY: datalab-tf-state
+
+jobs:
+  # Destroy the infrastructure deployed with terraform
+  terraform_job:
+    runs-on: ubuntu-latest
+    name: terraform-job
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+      
+      # 1.  Auth with AWS access keys
+
+      - name: Configure AWS credentials User
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-region: ${{ env.AWS_DEFAULT_REGION }}
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+
+      # 2. Prepare tfvars for deployment
+
+      - name: Fetch tfvars file
+        run: aws s3 cp s3://${{ env.X_BACKEND_BUCKET }}/${{ env.X_ENVIRONMENT}}.tfvars ./tf/aws_example/
+
+      # 3. Set up Terraform and destroy things
+
+      - name: Set up terraform CLI
+        uses: hashicorp/setup-terraform@v1
+        with:
+          terraform_version: 0.14
+
+      - name: Terraform init
+        run: |
+          terraform init \
+          -backend-config="bucket=${{ env.X_BACKEND_BUCKET }}" \
+          -backend-config="key=${{ env.X_BACKEND_TFSTATE_KEY }}" \
+          -backend-config="region=${{ env.AWS_DEFAULT_REGION }}" 
+        working-directory: ./tf/aws_example
+
+      # Remove the config_map from state (it's handled by K8s not terraform) and destroy the cluster (https://github.com/terraform-aws-modules/terraform-aws-eks/issues/978)
+      - name: Terraform destroy
+        run: |
+          terraform state rm module.eks.kubernetes_config_map.aws_auth
+          terraform destroy -var-file="${{ env.X_ENVIRONMENT}}.tfvars" -auto-approve
+        working-directory: ./tf/aws_example
