@@ -2,10 +2,6 @@
 
 To deploy the current version of the Data Lab the only requirements are a Kubernetes Cluster with an ingress controller (reverse proxy), and a domain name. If you have one, you can start the deployment from [here](#network). However, if you do not have a Kubernetes Cluster, this document guides you to the deployment of one in AWS.
 
-## :warning: Disclaimer :warning:
-The documentation is still in development and may be subject to future changes.
-
-## Table of Contents
 The document is divided in four parts:
 1. [Kubernetes Cluster](#kubernetes-cluster)
 2. [Network](#network)
@@ -48,27 +44,84 @@ terraform apply -var-file="dev.tfvars"
 
 After deployment, to configure your developer [kubectl](https://kubernetes.io/docs/tasks/tools/), use the AWS CLI to run the command to update your kubeconfig as described on [AWS Documentation](https://docs.aws.amazon.com/eks/latest/userguide/create-kubeconfig.html):
 ```
-aws eks --region <region-code> update-kubeconfig --name <cluster_name>
+aws eks --region eu-central-1 update-kubeconfig --name <cluster_name>
 ```
 
-> There are numerous advantages by having the EKS cluster being created and deleted continuously during the development stage on-off hours (off work schedule), the most important being the reduction of costs. To achieve this workflow, you can take a look at the automatic procedure to start the EKS cluster by 8h00 (GMT) and delete it by 19h00 (GMT) from Monday to Friday in [`.github/example_workflows`](../github/example_workflows).
+> There are numerous advantages by having the EKS cluster being created and deleted continuously during the development stage on-off hours (off work schedule), the most important being the reduction of costs. To achieve this workflow, you can take a look at the automatic procedure to start the EKS cluster by 8h00 (GMT) and delete it by 19h00 (GMT) from Monday to Friday in [`.github/example_workflows`](../.github/example_workflows).
 
-The second component of the Kubernetes cluster that is necessary is the Ingress Controller. This will be done with an [NGINX Ingress controller](https://kubernetes.github.io/ingress-nginx/). We will use AWS Network Load Balancer as the Service Type Load Balancer, but this option is only available on AWS, if you want to reach an cloud agnostic Ingress Controller, you can look into other options such as [traefik](https://traefik.io/).
+## Network
 
-The simplest way to deploy it is to use the manifest provided by [Kubernetes Community](https://kubernetes.github.io/ingress-nginx/deploy/#aws)
+After having the Kubernetes Cluster up and running, the only steps missing are to set-up the TLS protocol, the Ingress controller and the DNS records. For that purpose, it is necessary to own a domain name.
+
+To enable the TLS protocol, we will use [Let's Encrypt](https://letsencrypt.org/) as the Certificate Authority, and [certbot](https://certbot.eff.org/) to facilitate the certificates generation. Keeping in mind that the Data Lab requires the certificate to be available in any of the generated sub-domain names, the generation of the certificate must include a wildcard name (example: *.example.test). For example, to only generate the certificate with certbot, you can do:
+```
+cerbot certonly --manual
+```
+Ensure you generate a certificate for your sub-domains too, for example: `example.test,*.example.test`.
+
+After following the instructions, set-up your Ingress controller to use your certificates. First, create a secret with the privatekey and the certificate chain:
+```
+kubectl create secret tls wildcard -n ingress-nginx --key privkey.pem --cert fullchain.pem
+```
+
+The Ingress controller will be our point of entrance, it will be done with an [NGINX Ingress controller](https://kubernetes.github.io/ingress-nginx/). We will use AWS Network Load Balancer as the Service Type Load Balancer, but this option is only available on AWS, if you want to reach an cloud agnostic Ingress Controller, you can look into other options such as [traefik](https://traefik.io/).
+
+The simplest way to deploy it is to use the manifest provided by [Kubernetes Community](https://kubernetes.github.io/ingress-nginx/deploy/#aws), or similar manifests that you manage on your side.
 ```
 kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.0.4/deploy/static/provider/aws/deploy.yaml
 ```
 
-## Network
-CNAME, TLS
-
+If you want to filter IPs that have access to your development cluster, you can set `spec.loadBalancerSourceRanges` on the `Service` of type `LoadBalancer`. Then add the flag `--default-ssl-certificate=ingress-nginx/wildcard` to your controller arguments to ensure your ingress controller has access to the certificates. Using the Kubernetes Community manifests the added lines will look like this:
+```yaml
 ...
+apiVersion: v1
+kind: Service
+metadata:
+  name: ingress-nginx-controller
+  namespace: ingress-nginx
+...
+spec:
+    type: LoadBalancer
+    ...
+    loadBalancerSourceRanges: # NEW-LINES (1)
+    - "203.0.113.0/32"        # NEW-LINES (2) ip to open
+    - "203.0.113.1/32"        # NEW-LINES (3) ip to open
+...
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ingress-nginx-controller
+  namespace: ingress-nginx
+...
+spec:
+...
+    template:
+        spec:
+            - name: controller
+            ...
+            args:
+                - /nginx-ingress-controller
+                - ...
+                - --default-ssl-certificate=ingress-nginx/wildcard # NEW-LINE to use secret
+...
+```
+
+Finally, the domain must redirect to the ingress controller. Create a wildcard record for your previously created Service that exposes the ingress controller, for example, to expose the `NLB` create a `CNAME` record for `*.example.test` to `xxx.elb.<region>.amazonaws.com`.
 
 ## Data Lab Deployment
-Helm install complete package with all the initial configurations already set up.
 
-...
+Helm install complete package with all the initial configurations already set up, for more information on the Chart check the [Chart README.md](../charts/datalab/README.md). *Helm Charts must be adapted to the domain used*
+
+```
+cd charts/datalab
+helm upgrade --install datalab . -f values.yaml --wait
+```
+
+The default `values.yaml` can be modified but keep in mind that:
+- client IDs for minio should match the ones given in the `_realm-config.tpl` (*to be resolved*)
+- URLs for onyxia should match the ones built in the `_realm-config.tpl` (*to be resolved*)
+
+> **ATTENTION** ensure you do not commit your `values.yaml` with secrets to the SCM.
 
 ## Additional Configurations
 
