@@ -1,0 +1,357 @@
+# (TODO) Set your own domain name
+domainName: "example.test"
+
+# (TODO) Set your own SMTP server for Keycloak to use
+smtpServer: |-
+  {
+    "password": "",
+    "starttls": "",
+    "auth": "",
+    "port": "",
+    "host": "",
+    "from": "",
+    "fromDisplayName": "",
+    "ssl": "",
+    "user": ""
+  }
+
+###############################################################################
+# Keycloak Chart configuration values (Chart version 15.1.0, codocentric)
+# - Use PostgreSQL with Persistance Volume Claim data
+# - PROXY_ADDRESS_FORWARDING due to being behind a reverse proxy
+# - KUBE_PING for multiple replicas
+# - Configure based on a secret with the realm configuration
+# - (WARNING) !! Keycloak admin password is hardcoded here don't commit this file !!
+###############################################################################
+keycloak:
+  # The number of replicas to create (has no effect if autoscaling enabled)
+  replicas: 1 # Still some issues when trying out 2+ replicas
+
+  affinity: |
+    podAntiAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        - topologyKey: kubernetes.io/hostname
+  rbac:
+    create: true
+    rules:
+      # RBAC rules for KUBE_PING
+      - apiGroups:
+          - ""
+        resources:
+          - pods
+        verbs:
+          - get
+          - list
+
+  # (TODO) Set PostgreSQL secrets for Keycloak to use
+  postgresql:
+    enabled: true
+    postgresqlUsername: keycloak
+    postgresqlPassword: keycloak
+    postgresqlDatabase: keycloak
+
+  # (TODO) Sey Keycloak admin user and password
+  extraEnv: |
+    - name: KEYCLOAK_USER
+      value: admin
+    - name: KEYCLOAK_PASSWORD
+      value: admin
+    - name: KEYCLOAK_IMPORT
+      value: /realm/realm.json 
+    - name: PROXY_ADDRESS_FORWARDING
+      value: "true"
+    - name: JAVA_OPTS
+      value: >-
+        -XX:+UseContainerSupport
+        -XX:MaxRAMPercentage=50.0
+        -Djava.net.preferIPv4Stack=true
+        -Djboss.modules.system.pkgs=$JBOSS_MODULES_SYSTEM_PKGS
+        -Djava.awt.headless=true 
+        -Dkeycloak.profile=preview
+        -Dkeycloak.profile.feature.upload_scripts=enabled
+    - name: JGROUPS_DISCOVERY_PROTOCOL
+      value: kubernetes.KUBE_PING
+    - name: KUBERNETES_NAMESPACE
+      valueFrom:
+       fieldRef:
+         apiVersion: v1
+         fieldPath: metadata.namespace
+    - name: KEYCLOAK_STATISTICS
+      value: "true"
+    - name: CACHE_OWNERS_COUNT
+      value: "2"
+    - name: CACHE_OWNERS_AUTH_SESSIONS_COUNT
+      value: "2"
+
+  extraVolumes: |
+    - name: realm-secret
+      secret:
+        secretName: {{ .Release.Name }}-realm-secret
+
+  extraVolumeMounts: |
+    - name: realm-secret
+      mountPath: "/realm/"
+      readOnly: true
+  
+  ingress:
+    enabled: true
+    annotations:
+      kubernetes.io/ingress.class: nginx
+    rules:
+      - host: "keycloak.example.test"
+        paths:
+          - path: /
+            pathType: Prefix
+    tls:
+      - hosts:
+        - keycloak.example.test
+
+###############################################################################
+# MinIO Chart configuration values (Chart version 9.1.0, bitnami)
+# - Mode on standalone for prototype, preferred distributed for production
+# - Persistence should be enabled with PVC for the data (further configuration is possible)
+# - Configure Keycloak as id provider with environment variables
+# - Post-install job created to create a policy in this MinIO server
+# - (WARNING) !! MinIO root password is hardcoded here don't commit this file !!
+###############################################################################
+minio:
+  enabled: true
+  # Use distributed for more features
+  mode: standalone
+  # And you can configure the following
+  # statefulset:
+  #   replicaCount: 4 # Should be even and >= 4
+  #   drivesPerNode: 1 # Total drives shoulb be % 4 = 0
+
+  # Defaults to 8Gi per volume
+  persistence:
+    enabled: true
+    # size: 1024Gi
+
+  # (TODO) Set MinIO root credentials (password has to be bigger than 8 characters)
+  accessKey:
+    password: "admin"
+  secretKey:
+    password: "adminadmin"
+
+  extraEnv:
+    - name: MINIO_IDENTITY_OPENID_CONFIG_URL
+      value: "https://keycloak.example.test/auth/realms/datalab-demo/.well-known/openid-configuration"
+    - name: MINIO_IDENTITY_OPENID_CLIENT_ID
+      value: minio
+    - name: MINIO_DOMAIN
+      value: "minio.example.test"
+    - name: MINIO_IDENTITY_OPENID_CLAIM_NAME
+      value: policy
+    - name: MINIO_IDENTITY_OPENID_REDIRECT_URI
+      value: https://minio-console.example.test/oauth_callback
+    - name: MINIO_IDENTITY_OPENID_SCOPES
+      value: openid,profile,email,roles
+
+  ingress:
+    enabled: true
+    hostname: minio-console.example.test
+    annotations:
+      kubernetes.io/ingress.class: nginx
+      nginx.ingress.kubernetes.io/proxy-body-size: "0"
+      nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+      nginx.ingress.kubernetes.io/preserve-trailing-slash: "true"
+
+  apiIngress:
+    enabled: true
+    hostname: minio.example.test
+    annotations:
+      kubernetes.io/ingress.class: nginx
+      nginx.ingress.kubernetes.io/proxy-body-size: "0"
+      nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+      nginx.ingress.kubernetes.io/preserve-trailing-slash: "true"
+
+###############################################################################
+# Onyxia Chart configuration values (Chart version 1.3.0, inseefrlab)
+# - Keep up to date with latest images if using InseeFrLab catalogs
+# - API cluster admin has to be set to true to deploy on user's namespaces
+# - ensure hostnames, client-id and realm configurations match the _realm-config.tpl
+###############################################################################
+onyxia:
+  # Default values for onyxia-bis.
+  # This is a YAML-formatted file.
+  # Declare variables to be passed into your templates.
+
+  imagePullSecrets: []
+
+  serviceAccount:
+    # Specifies whether a service account should be created
+    create: true
+    clusterAdmin: true # If true, give cluster admin permissions. Otherwise, be admin scoped to the namespace
+    # Annotations to add to the service account
+    annotations: {}
+    # The name of the service account to use.
+    # If not set and create is true, a name is generated using the fullname template
+    name:
+
+  ingress:
+    enabled: true
+    annotations:
+      kubernetes.io/ingress.class: nginx
+      kubernetes.io/ingress.allow-http: "false"
+    hosts:
+      - host: datalab.example.test
+    tls:  
+      - hosts:
+        - datalab.example.test
+
+  ui:
+    name: ui
+    replicaCount: 1
+    image:
+      name: inseefrlab/onyxia-web
+      version: latest # 482aa97b0156
+      pullPolicy: Always
+    podSecurityContext:
+      {}
+      # fsGroup: 2000
+    securityContext:
+      {}
+      # capabilities:
+      #   drop:
+      #   - ALL
+      # readOnlyRootFilesystem: true
+      # runAsNonRoot: true
+      # runAsUser: 1000
+    service:
+      type: ClusterIP
+      port: 80
+    resources:
+      {}
+      # We usually recommend not to specify default resources and to leave this as a conscious
+      # choice for the user. This also increases chances charts run on environments with little
+      # resources, such as Minikube. If you do want to specify resources, uncomment the following
+      # lines, adjust them as necessary, and remove the curly braces after 'resources:'.
+      # limits:
+      #   cpu: 100m
+      #   memory: 128Mi
+      # requests:
+      #   cpu: 100m
+      #   memory: 128Mi
+
+    nodeSelector: {}
+
+    tolerations: []
+
+    affinity: {}
+
+    env:
+      OIDC_REALM: datalab-demo
+      OIDC_CLIENT_ID: onyxia-client
+      OIDC_URL: https://keycloak.example.test/auth
+      MINIO_URL: https://minio.example.test
+
+  api:
+    name: api
+    replicaCount: 1
+    image:
+      name: inseefrlab/onyxia-api
+      version: latest # 19f8682347c2
+      pullPolicy: Always
+    podSecurityContext:
+      {}
+      # fsGroup: 2000
+    securityContext:
+      {}
+      # capabilities:
+      #   drop:
+      #   - ALL
+      # readOnlyRootFilesystem: true
+      # runAsNonRoot: true
+      # runAsUser: 1000
+    service:
+      type: ClusterIP
+      port: 80
+    resources:
+      {}
+      # We usually recommend not to specify default resources and to leave this as a conscious
+      # choice for the user. This also increases chances charts run on environments with little
+      # resources, such as Minikube. If you do want to specify resources, uncomment the following
+      # lines, adjust them as necessary, and remove the curly braces after 'resources:'.
+      # limits:
+      #   cpu: 100m
+      #   memory: 128Mi
+      # requests:
+      #   cpu: 100m
+      #   memory: 128Mi
+    nodeSelector: {}
+    tolerations: []
+    affinity: {}
+    
+    env:
+      keycloak.realm: datalab-demo
+      keycloak.auth-server-url: https://keycloak.example.test/auth
+      authentication.mode: "openidconnect"
+      springdoc.swagger-ui.oauth.clientId: onyxia-client
+      catalog.refresh.ms: "300000"
+      
+    regions: [
+      {
+        "id": "demo",
+        "name": "Demo",
+        "description": "This is a demo region, feel free to try Onyxia !",     
+        "onyxiaAPI": {
+          "baseURL": ""
+        },
+        "services": {
+          "type": "KUBERNETES",
+          "initScript": "https://git.lab.sspcloud.fr/innovation/plateforme-onyxia/services-ressources/-/raw/master/onyxia-init.sh",
+          "singleNamespace": false,
+          "namespacePrefix": "user-",
+          "usernamePrefix": "oidc-",
+          "groupNamespacePrefix": "projet-",
+          "groupPrefix": "oidc-",
+          "authenticationMode": "admin",
+          "quotas": { 
+            "enabled": false,
+            "allowUserModification": true,
+            "default": {
+              "requests.memory": "10Gi",
+              "requests.cpu": "10",
+              "limits.memory": "10Gi",
+              "limits.cpu": "10",
+              "requests.storage": "100Gi",
+              "count/pods": "50"
+            }
+          },
+          "defaultConfiguration": {
+            "IPProtection": true,
+            "networkPolicy": true
+          },
+          "expose": { "domain": "example.test" },
+          "monitoring": { "URLPattern": "https://graphana.example.test/path/to/dashboard/?namespace=$NAMESPACE_ID&instance=$INSTANCE_ID" },
+          "cloudshell": {
+            "catalogId": "inseefrlab-helm-charts-datascience",
+            "packageName": "cloudshell"
+          },
+        },
+        "data": { 
+          "S3": { 
+            "URL": "https://minio.example.test", 
+            "monitoring": { 
+              "URLPattern": "https://graphana.example.test/path/to/dashboard/?bucket=$BUCKET_ID"
+            } 
+          } 
+        },
+        "auth": { "type": "openidconnect" },
+        "location": { "lat": 48.8164, "long": 2.3174, "name": "Montrouge (France)" }
+      }
+    ]
+
+    catalogs: [
+      {
+        "id": "inseefrlab-helm-charts-datascience",
+        "name": "Inseefrlab datascience",
+        "description": "Services for datascientists. https://github.com/InseeFrLab/helm-charts-datascience",
+        "maintainer": "innovation@insee.fr",
+        "location": "https://inseefrlab.github.io/helm-charts-datascience",
+        "status": "PROD",
+        "type": "helm",
+      }
+    ]
+

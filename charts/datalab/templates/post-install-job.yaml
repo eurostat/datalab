@@ -1,0 +1,33 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: "{{ .Release.Name }}-post-install"
+  labels:
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    helm.sh/chart: "{{ .Chart.Name }}-{{ .Chart.Version }}"
+  annotations:
+    helm.sh/hook: post-install,post-upgrade
+    helm.sh/hook-delete-policy: hook-succeeded,before-hook-creation
+spec:
+  template:
+    metadata:
+      name: "{{ .Release.Name }}"
+      labels:
+        app.kubernetes.io/managed-by: {{ .Release.Service | quote }}
+        app.kubernetes.io/instance: {{ .Release.Name | quote }}
+        helm.sh/chart: "{{ .Chart.Name }}-{{ .Chart.Version }}"
+    spec:
+      restartPolicy: Never
+      containers:
+      - name: minio-mc
+        image: "minio/mc"
+        command: ["/bin/sh","-c"]
+        args: ["mc alias set minio https://{{ .Values.minio.apiIngress.hostname }} {{ .Values.minio.accessKey.password }} {{ .Values.minio.secretKey.password }} --api S3v4 && mc admin policy add minio stsonly /tmp/configs/stsonly.json && mc admin service restart minio"]
+        volumeMounts:
+          - name: configs
+            mountPath: /tmp/configs
+      volumes:
+        - name: configs
+          configMap:
+            name: "{{ .Release.Name }}-minio-startup"
