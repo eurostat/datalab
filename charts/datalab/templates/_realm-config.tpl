@@ -14,6 +14,49 @@
   "requiredCredentials": [
     "password"
   ],
+  "users": [
+    {{- if .Values.demo.enabled -}}
+    {
+      "username" : "demo",
+      "enabled": true,
+      "credentials" : [
+        { 
+          "type" : "password",
+          "value" : "demo"
+        }
+      ],
+      "realmRoles": [ "default-roles-datalab-demo" ]
+    }
+    {{- range .Values.demo.users }}
+    ,{
+      "username" : "{{ .name }}",
+      "enabled": true,
+      "credentials" : [
+        { 
+          "type" : "password",
+          "value" : "{{ .password }}"
+        }
+      ],
+      "realmRoles": [ "default-roles-datalab-demo" ],
+      "groups": {{ .groups | toJson}}
+    }
+    {{- end }}    
+    {{- end -}}
+  ],
+  "groups": [
+    {{- if .Values.demo.enabled -}}
+    {
+      "name": "demo",
+      "path": "/demo"
+    }
+    {{- range .Values.demo.projects }}
+    ,{
+      "name": "{{ .name }}",
+      "path": "/{{ .name }}"
+    }
+    {{- end }}    
+    {{- end -}}
+  ],
   "roles": {
     "realm": [
       {
@@ -48,6 +91,19 @@
         "use.refresh.tokens": "true"
       },
       "protocolMappers": [
+        {
+          "name": "groups",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-group-membership-mapper",
+          "consentRequired": false,
+          "config": {
+            "full.path": "false",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "claim.name": "groups",
+            "userinfo.token.claim": "true"
+          }
+        },
         {
           "name": "policy",
           "protocol": "openid-connect",
@@ -102,7 +158,7 @@
           "protocolMapper": "oidc-group-membership-mapper",
           "consentRequired": false,
           "config": {
-            "full.path": "true",
+            "full.path": "false",
             "id.token.claim": "true",
             "access.token.claim": "true",
             "claim.name": "groups",

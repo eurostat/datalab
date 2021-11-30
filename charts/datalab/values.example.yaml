@@ -15,6 +15,28 @@ smtpServer: |-
     "user": ""
   }
 
+# Demo users and groups/projects to define
+demo:
+  enabled: true
+  users:
+    - name: jondoe
+      password: jondoe
+      groups:
+        - g1
+        - g2
+    - name: janedoe
+      password: janedoe
+      groups:
+        - g1
+  projects:
+    - name: g1
+      members:
+        - jondoe
+        - janedoe
+    - name: g2
+      members:
+        - jondoe
+
 ###############################################################################
 # Keycloak Chart configuration values (Chart version 15.1.0, codocentric)
 # - Use PostgreSQL with Persistance Volume Claim data

@@ -17,8 +17,8 @@ Define policies for MinIO
                 "arn:aws:s3:::${jwt:preferred_username}/*"
             ]
         }
-        {{- if .Values.projects -}}
-        {{- range .Values.projects }}
+        {{- if .Values.demo.enabled -}}
+        {{- range .Values.demo.projects }}
         ,
         {
             "Effect": "Allow",
@@ -26,8 +26,8 @@ Define policies for MinIO
                 "s3:*"
             ],
             "Resource": [
-                "arn:aws:s3:::{{ .name }}",
-                "arn:aws:s3:::{{ .name }}/*"
+                "arn:aws:s3:::projet-{{ .name }}",
+                "arn:aws:s3:::projet-{{ .name }}/*"
             ],
             "Condition": {
                 "StringEquals": {
