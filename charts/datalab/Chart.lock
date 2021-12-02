@@ -7,6 +7,6 @@ dependencies:
   version: 15.1.0
 - name: onyxia
   repository: https://inseefrlab.github.io/helm-charts
-  version: 1.3.0
-digest: sha256:0c8826b441077ecc762785ad4876d4765c5fcdf3addb69192de73d672bf383e5
-generated: "2021-11-18T14:54:56.5710188Z"
+  version: 2.0.0
+digest: sha256:2a05b60e73f62549bc4a7d55e6443919fba365b50577cc7defe457773c92577f
+generated: "2021-12-02T09:12:43.7993088Z"
