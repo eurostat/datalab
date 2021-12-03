@@ -1,0 +1,12 @@
+dependencies:
+- name: minio
+  repository: https://charts.bitnami.com/bitnami
+  version: 8.1.7
+- name: keycloak
+  repository: https://codecentric.github.io/helm-charts
+  version: 15.1.0
+- name: onyxia
+  repository: https://inseefrlab.github.io/helm-charts
+  version: 2.0.0
+digest: sha256:2a05b60e73f62549bc4a7d55e6443919fba365b50577cc7defe457773c92577f
+generated: "2021-12-02T09:12:43.7993088Z"

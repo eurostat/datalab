@@ -56,3 +56,7 @@ override.tf.json
 # Ignore CLI configuration files
 .terraformrc
 terraform.rc
+
+# Files that definitely should not be on SCM
+*.pem
+**/values.yaml
