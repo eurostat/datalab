@@ -8,5 +8,20 @@ dependencies:
 - name: onyxia
   repository: https://inseefrlab.github.io/helm-charts
   version: 2.0.0
-digest: sha256:2a05b60e73f62549bc4a7d55e6443919fba365b50577cc7defe457773c92577f
-generated: "2021-12-02T09:12:43.7993088Z"
+- name: vault
+  repository: https://helm.releases.hashicorp.com
+  version: 0.18.0
+- name: prometheus
+  repository: https://prometheus-community.github.io/helm-charts
+  version: 15.0.1
+- name: grafana
+  repository: https://grafana.github.io/helm-charts
+  version: 6.17.10
+- name: postgresql
+  repository: https://charts.bitnami.com/bitnami
+  version: 10.13.8
+- name: ckan
+  repository: https://keitaro-charts.storage.googleapis.com
+  version: 1.0.1
+digest: sha256:dc07a4a79604cda9f6f34272c3678e1ced25e99fe7e911241dfa924959f1f986
+generated: "2021-12-06T16:36:10.8375608Z"

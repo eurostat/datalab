@@ -23,7 +23,7 @@ spec:
       - name: minio-mc
         image: "minio/mc"
         command: ["/bin/sh","-c"]
-        args: ["mc alias set minio https://{{ .Values.minio.apiIngress.hostname }} {{ .Values.minio.accessKey.password }} {{ .Values.minio.secretKey.password }} --api S3v4 && mc admin policy add minio stsonly /tmp/configs/stsonly.json && mc admin service restart minio"]
+        args: ["mc alias set minio http://{{ .Release.Name }}-minio.{{ .Release.Namespace }}.svc.cluster.local:{{ .Values.minio.service.ports.api }} {{ .Values.minio.accessKey.password }} {{ .Values.minio.secretKey.password }} --api S3v4 && mc admin policy add minio stsonly /tmp/configs/stsonly.json && mc admin service restart minio"]
         volumeMounts:
           - name: configs
             mountPath: /tmp/configs
