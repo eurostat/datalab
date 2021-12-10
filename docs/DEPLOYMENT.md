@@ -57,7 +57,7 @@ To enable the TLS protocol, we will use [Let's Encrypt](https://letsencrypt.org/
 ```
 cerbot certonly --manual
 ```
-Ensure you generate a certificate for your sub-domains too, for example: `example.test,*.example.test`.
+Ensure you generate a certificate for your sub-domains too, for example: `example.test,*.example.test,*.kub.example.test`.
 
 After following the instructions, set-up your Ingress controller to use your certificates. First, create a secret with the privatekey and the certificate chain:
 ```
@@ -110,19 +110,52 @@ Finally, the domain must redirect to the ingress controller. Create a wildcard r
 
 ## Data Lab Deployment
 
+There are a few steps required to launch a complete instance of our Helm Chart:
+1. Getting a domain and updating its DNS values, as well as configuring TLS certificates
+2. Get an SMTP Server (email) to enable Keycloak to have all its features available
+3. Match a `_realm-template.tpl` definition of `Realm` and `Clients` with your set values
+4. Create a `onyxia-web` image to add necessary connections (p.e. to the data catalog)
+5. Create a `Ckan` image to enable Keycloak's SSO on image build
+6. Decide wether to create multiple databases or just one and set `values.yaml` accordingly
+
 Helm install complete package with all the initial configurations already set up, for more information on the Chart check the [Chart README.md](../charts/datalab/README.md). *Helm Charts must be adapted to the domain used*
 
+Keep in mind it is necessary to:
+- have the created Ckan image published and referenced in `values.yaml` if the data catalog feature is desired.
+  - have the created Onyxia-web image published and referenced in `values.yaml` if it is desired to have a  link in the frontend redirecting to the data catalog (for now)
+- configure `Postgres` as a dependency and disable it in other services to achieve a deployment with only one DB, **OR** disable the `Postgres` dependency and leave the it enabled in the other services to have multiple DBs.
+
+More information on these configurations may be found below in the **Configurable Parameters** section, in [Chart README.md](../charts/datalab/README.md).
+
+After having the desired configurations achieved, you can install the chart:
+
 ```
-cd charts/datalab
+cd datalab/charts/datalab
 helm upgrade --install datalab . -f values.yaml --wait
 ```
 
-The default `values.yaml` can be modified but keep in mind that:
-- client IDs for minio should match the ones given in the `_realm-config.tpl` (*to be resolved*)
-- URLs for onyxia should match the ones built in the `_realm-config.tpl` (*to be resolved*)
-
-> **ATTENTION** ensure you do not commit your `values.yaml` with secrets to the SCM.
-
 ## Additional Configurations
 
-...
+After successful installation, configure HashiCorp's Vault to be used by Onyxia and Keycloak `jwt` authentication.
+```bash
+kubectl exec --stdin --tty datalab-vault-0 -- /bin/sh
+
+# inside the pod... place both to 1 in development for ease of use
+vault operator init -key-shares=5 -key-threshold=3
+
+# ******************** IMPORTANT ******************** 
+# Get Unseal Key shares and root token: keep them SAFE!
+# ******************** IMPORTANT ********************
+
+vault operator unseal # key share 1
+vault operator unseal # key share 2
+vault operator unseal # key share 3
+
+# Run the mounted configmap with the root-token as env var
+VAULT_TOKEN=<root-token> ./vault/scripts/configscript.sh
+```
+
+And enable CORS for Onyxia access.
+```
+curl --header "X-Vault-Token: <root-token>" --request PUT --data '{"allowed_origins": ["https://datalab.clouddatalab.eu", "https://vault.clouddatalab.eu" ]}'  https://vault.clouddatalab.eu/v1/sys/config/cors
+```
