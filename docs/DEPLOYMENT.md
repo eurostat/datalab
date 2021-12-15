@@ -157,5 +157,5 @@ VAULT_TOKEN=<root-token> ./vault/scripts/configscript.sh
 
 And enable CORS for Onyxia access.
 ```
-curl --header "X-Vault-Token: <root-token>" --request PUT --data '{"allowed_origins": ["https://datalab.clouddatalab.eu", "https://vault.clouddatalab.eu" ]}'  https://vault.clouddatalab.eu/v1/sys/config/cors
+curl --header "X-Vault-Token: <root-token>" --request PUT --data '{"allowed_origins": ["https://datalab.example.test", "https://vault.example.test" ]}'  https://vault.example.test/v1/sys/config/cors
 ```
