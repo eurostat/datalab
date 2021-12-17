@@ -9,7 +9,9 @@
 
 ## TL;DR
 ```
-git clone https://github.com/eurostat/datalab
+helm repo add eurostat-datalab https://eurostat.github.io/datalab/
+helm repo update
+helm show values eurostat-datalab/datalab > values.yaml
 ```
 
 **IMPORTANT**: create your own `values.yaml` based on the default `values.yaml` with your domain name, SMTP server, and passwords.
@@ -17,8 +19,7 @@ git clone https://github.com/eurostat/datalab
 > **ATTENTION** ensure you do not commit your `values.yaml` with secrets to the SCM.
 
 ```
-cd datalab/charts/datalab
-helm upgrade --install datalab . -f values.yaml --wait
+helm upgrade --install datalab eurostat-datalab/datalab -f values.yaml --wait
 ```
 
 ## Introduction
@@ -45,10 +46,18 @@ The dependencies of the Chart are the components of the data lab with:
 
 ## Installing the Chart
 
-**IMPORTANT**: create your own `values.yaml` based on the default `values.yaml` with your domain name, SMTP server, and passwords.
 ```
-cd datalab/charts/datalab
-helm upgrade --install datalab . -f values.yaml --wait
+helm repo add eurostat-datalab https://eurostat.github.io/datalab/
+helm repo update
+helm show values eurostat-datalab/datalab > values.yaml
+```
+
+**IMPORTANT**: create your own `values.yaml` based on the default `values.yaml` with your domain name, SMTP server, and passwords.
+
+> **ATTENTION** ensure you do not commit your `values.yaml` with secrets to the SCM.
+
+```
+helm upgrade --install datalab eurostat-datalab/datalab -f values.yaml --wait
 ```
 
 ## Uninstalling the Chart
