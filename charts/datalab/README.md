@@ -12,7 +12,7 @@
 git clone https://github.com/eurostat/datalab
 ```
 
-**IMPORTANT**: create a `values.yaml` based on `values.example.yaml` with your domain name, SMTP server, and passwords.
+**IMPORTANT**: create your own `values.yaml` based on the default `values.yaml` with your domain name, SMTP server, and passwords.
 
 > **ATTENTION** ensure you do not commit your `values.yaml` with secrets to the SCM.
 
@@ -45,7 +45,7 @@ The dependencies of the Chart are the components of the data lab with:
 
 ## Installing the Chart
 
-**IMPORTANT**: create a `values.yaml` based on `values.example.yaml` with your domain name, SMTP server, and passwords.
+**IMPORTANT**: create your own `values.yaml` based on the default `values.yaml` with your domain name, SMTP server, and passwords.
 ```
 cd datalab/charts/datalab
 helm upgrade --install datalab . -f values.yaml --wait
