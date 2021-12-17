@@ -1,0 +1,24 @@
+apiVersion: v1
+entries:
+  datalab:
+  - apiVersion: v2
+    appVersion: 0.1.0
+    created: "2021-12-17T10:23:14.1098011Z"
+    dependencies:
+    - name: minio
+      repository: https://charts.bitnami.com/bitnami
+      version: 8.1.7
+    - name: keycloak
+      repository: https://codecentric.github.io/helm-charts
+      version: 15.1.0
+    - name: onyxia
+      repository: https://inseefrlab.github.io/helm-charts
+      version: 2.0.0
+    description: A Cloud Agnostic Data Lab Helm chart for Kubernetes
+    digest: 68f5239e77e04a1435d915826dd8ccd707256d8c9ef80bb922a1dd68026b58e8
+    name: datalab
+    type: application
+    urls:
+    - https://github.com/eurostat/datalab/releases/download/datalab-0.1.0/datalab-0.1.0.tgz
+    version: 0.1.0
+generated: "2021-12-17T10:23:14.1098011Z"
