@@ -45,6 +45,7 @@ data:
         role_type="jwt" \
         bound_audiences="onyxia-client" \
         user_claim="preferred_username" \
+        groups_claim="groups" \
         policies="onyxia-kv"
 
     vault policy write onyxia-kv tmp/onyxia-kv-policy.hcl

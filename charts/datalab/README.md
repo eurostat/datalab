@@ -51,6 +51,8 @@ And enable CORS for Onyxia access.
 curl --header "X-Vault-Token: <root-token>" --request PUT --data '{"allowed_origins": ["https://datalab.example.test", "https://vault.example.test" ]}'  https://vault.example.test/v1/sys/config/cors
 ```
 
+Finally, if you want to use the groups feature, you'll have to configure policies for each group you create, a helper script can be found at `helpers/vault-groups-config.sh`.
+
 ## Introduction
 
 This Chart wraps the necessary services to launch a complete data lab on a [Kubernetes](https://kubernetes.io/) cluster using [Helm](https://helm.sh/) package manager. It provisions the central component of the data lab [Onyxia](https://github.com/InseeFrLab/onyxia), and the necessary peripheral components to handle IAM ([Keycloak](https://www.keycloak.org/)), Storage ([MinIO&reg;](https://min.io/)), Secrets Management ([HashiCorp's Vault](https://www.vaultproject.io/)), Monitoring ([Prometheus](https://prometheus.io/)+[Grafana](https://grafana.com/)) and Data Catalog ([Ckan](https://ckan.org/)).
@@ -121,6 +123,8 @@ And enable CORS for Onyxia access.
 ```
 curl --header "X-Vault-Token: <root-token>" --request PUT --data '{"allowed_origins": ["https://datalab.example.test", "https://vault.example.test" ]}'  https://vault.example.test/v1/sys/config/cors
 ```
+
+Finally, if you want to use the groups feature, you'll have to configure policies for each group you create, a helper script can be found at `helpers/vault-groups-config.sh`.
 
 ## Uninstalling the Chart
 
