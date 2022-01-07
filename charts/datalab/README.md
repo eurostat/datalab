@@ -15,16 +15,17 @@
 
 ## TL;DR
 ```
-git clone https://github.com/eurostat/datalab
+helm repo add eurostat-datalab https://eurostat.github.io/datalab/
+helm repo update
+helm show values eurostat-datalab/datalab > values.yaml
 ```
 
-**IMPORTANT**: create a `values.yaml` based on `values.example.yaml` with your domain name, SMTP server, and passwords.
+**IMPORTANT**: create your own `values.yaml` based on the default `values.yaml` with your domain name, SMTP server, and passwords.
 
 > **ATTENTION** ensure you do not commit your `values.yaml` with secrets to the SCM.
 
 ```
-cd datalab/charts/datalab
-helm upgrade --install datalab . -f values.yaml --wait
+helm upgrade --install datalab eurostat-datalab/datalab -f values.yaml --wait
 ```
 
 After successful installation, configure HashiCorp's Vault to be used by Onyxia and Keycloak `jwt` authentication.
@@ -84,20 +85,18 @@ The dependencies of the Chart are the components of the data lab with:
 
 ## Installing the Chart
 
-**IMPORTANT**: create a `values.yaml` based on `values.example.yaml` with your domain name, SMTP server, and passwords.
+```
+helm repo add eurostat-datalab https://eurostat.github.io/datalab/
+helm repo update
+helm show values eurostat-datalab/datalab > values.yaml
+```
 
-Keep in mind it is necessary to:
-- have the created Ckan image published and referenced in `values.yaml` if the data catalog feature is desired.
-  - have the created Onyxia-web image published and referenced in `values.yaml` if it is desired to have a  link in the frontend redirecting to the data catalog (for now)
-- configure `Postgres` as a dependency and disable it in other services to achieve a deployment with only one DB, **OR** disable the `Postgres` dependency and leave the it enabled in the other services to have multiple DBs.
+**IMPORTANT**: create your own `values.yaml` based on the default `values.yaml` with your domain name, SMTP server, and passwords.
 
-More information on these configurations may be found below in the **Configurable Parameters** section.
-
-After having the desired configurations achieved, you can install the chart:
+> **ATTENTION** ensure you do not commit your `values.yaml` with secrets to the SCM.
 
 ```
-cd datalab/charts/datalab
-helm upgrade --install datalab . -f values.yaml --wait
+helm upgrade --install datalab eurostat-datalab/datalab -f values.yaml --wait
 ```
 
 After successful installation, configure HashiCorp's Vault to be used by Onyxia and Keycloak `jwt` authentication.
