@@ -528,8 +528,7 @@ prometheus:
       receivers:
         - name: default-receiver
           email_configs:
-            - to: diogom.o.moreira@gmail.com
-            #- to: luismferreira@deloitte.pt
+            - to: example@example.com
       templates: []
   
   serverFiles:
