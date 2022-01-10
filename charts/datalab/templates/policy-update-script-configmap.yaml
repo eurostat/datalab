@@ -1,0 +1,85 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: policy-update-script-configmap
+data:
+  script.py: |-
+    import os, requests, json
+    import bmc
+
+    keycloak_dns = os.environ['KEYCLOAK_SC__SVC_NAME']
+    minio_dns = os.environ['MINIO_SC__SVC_NAME']
+    admin_username = os.environ['KEYCLOAK_ADMIN_USERNAME']
+    admin_password = os.environ['KEYCLOAK_ADMIN_PASSWORD']
+    minio_access_key = os.environ['MINIO_ACCESS_KEY']
+    minio_secret_key = os.environ['MINIO_SECRET_KEY']
+
+
+    headers = {'Content-Type': 'application/x-www-form-urlencoded'}
+    data = {'grant_type': 'password', 'username': admin_username, 'password': admin_password, 'client_id': 'admin-cli'}
+    token_response = requests.post(keycloak_dns+'/auth/realms/master/protocol/openid-connect/token', data=data, headers=headers).json()
+
+    admin_token = 'Bearer ' + token_response["access_token"]
+
+    groups_response = requests.get(keycloak_dns+'/auth/admin/realms/datalab-demo/groups', headers={'Authorization': admin_token}).json()
+
+    groupsWmembers = {}
+
+    for group in groups_response:
+        groupsWmembers[group['name']] = []
+        members_response = requests.get(keycloak_dns+'/auth/admin/realms/datalab-demo/groups/'+group['id']+'/members', headers={'Authorization': admin_token}).json()
+        for member in members_response:
+            groupsWmembers[group['name']].append(member['username'])
+
+    #print(groupsWmembers)
+
+    base_policy = {
+        "Version": "2012-10-17",
+        "Statement": [
+            {
+                "Effect": "Allow",
+                "Action": [
+                    "s3:*"
+                ],
+                "Resource": [
+                    "arn:aws:s3:::${jwt:preferred_username}",
+                    "arn:aws:s3:::${jwt:preferred_username}/*"
+                ]
+            }
+        ]
+    }
+
+
+    for group in groupsWmembers:
+        if len(groupsWmembers[group]) > 0:
+            groupPolicy = {
+                "Effect": "Allow",
+                "Action": [
+                    "s3:*"
+                ],
+                "Resource": [
+                    "arn:aws:s3:::projet-"+group,
+                    "arn:aws:s3:::projet-"+group+"/*"
+                ],
+                "Condition": {
+                    "StringEquals": {
+                        "jwt:preferred_username": groupsWmembers[group]
+                            
+                    }
+                }
+            }
+            base_policy["Statement"].append(groupPolicy)
+            
+    #print(base_policy)
+    with open('temp.json', 'w') as fp:
+        json.dump(base_policy, fp)
+
+    client = bmc.config_host_add(
+        alias='minio',
+        url=minio_dns,
+        username=minio_access_key,
+        password=minio_secret_key
+    )
+
+    bmc.admin_policy_remove(target='minio', name='stsonly')
+    bmc.admin_policy_add(target='minio', name='stsonly', file='temp.json')

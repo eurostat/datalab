@@ -124,6 +124,7 @@ Keep in mind it is necessary to:
 - have the created Ckan image published and referenced in `values.yaml` if the data catalog feature is desired.
   - have the created Onyxia-web image published and referenced in `values.yaml` if it is desired to have a  link in the frontend redirecting to the data catalog (for now)
 - configure `Postgres` as a dependency and disable it in other services to achieve a deployment with only one DB, **OR** disable the `Postgres` dependency and leave the it enabled in the other services to have multiple DBs.
+- configure alert rules and SMTP server for Prometheus if a closer monitoring of consumption is intended.
 
 More information on these configurations may be found below in the **Configurable Parameters** section, in [Chart README.md](../charts/datalab/README.md).
 
@@ -155,7 +156,9 @@ vault operator unseal # key share 3
 VAULT_TOKEN=<root-token> ./vault/scripts/configscript.sh
 ```
 
-And enable CORS for Onyxia access.
+And enable CORS for Onyxia access to Vault.
 ```
 curl --header "X-Vault-Token: <root-token>" --request PUT --data '{"allowed_origins": ["https://datalab.example.test", "https://vault.example.test" ]}'  https://vault.example.test/v1/sys/config/cors
 ```
+
+If alert rules changes are required you can edit the configmap `datalab-prometheus-server`, assuming the release name was `datalab`, and alter the `alerting_rules.yml` value. This will trigger a reload of the configmap and the creation of the alert rules in the Prometheus server. For more information on how to write the rules, visit the official [Prometheus documentation](https://prometheus.io/docs/prometheus/latest/configuration/alerting_rules/). Note that the [Chart README.md](../charts/datalab/README.md) has already some examples of possible alert rules.

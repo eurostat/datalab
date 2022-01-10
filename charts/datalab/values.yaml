@@ -37,6 +37,16 @@ demo:
       members:
         - jondoe
 
+autoUpdatePolicy:
+  schedule: "* */12 * * *"
+
+alertThresholds:
+  inactivityPeriod: 15d
+  CpuRequestQuota: 0.5
+  MemRequestQuota: 4
+  CpuLimitsQuota: 30
+  MemLimitsQuota: 64
+
 ###############################################################################
 # Keycloak Chart configuration values (Chart version 15.1.0, codocentric)
 # - Use PostgreSQL with Persistance Volume Claim data
@@ -73,6 +83,8 @@ keycloak:
     postgresqlDatabase: keycloak
 
   # (TODO) Set Keycloak admin user and password
+  kcUser: admin
+  kcPassword: admin
   extraEnv: |
     - name: DB_VENDOR
       value: postgres
@@ -87,9 +99,9 @@ keycloak:
     - name: DB_PASSWORD
       value: keycloak
     - name: KEYCLOAK_USER
-      value: admin
+      value: {{ .Values.kcUser }}
     - name: KEYCLOAK_PASSWORD
-      value: admin
+      value: {{ .Values.kcUser }}
     - name: KEYCLOAK_IMPORT
       value: /realm/realm.json 
     - name: PROXY_ADDRESS_FORWARDING
@@ -110,22 +122,65 @@ keycloak:
        fieldRef:
          apiVersion: v1
          fieldPath: metadata.namespace
-    - name: KEYCLOAK_STATISTICS
-      value: "true"
     - name: CACHE_OWNERS_COUNT
       value: "2"
     - name: CACHE_OWNERS_AUTH_SESSIONS_COUNT
       value: "2"
+    - name: KEYCLOAK_STATISTICS
+      value: all
+    - name: PROMETHEUS_PUSHGATEWAY_ADDRESS
+      value: "http://datalab-prometheus-pushgateway.default.svc.cluster.local:9091"
 
   extraVolumes: |
     - name: realm-secret
       secret:
         secretName: {{ .Release.Name }}-realm-secret
+    - name: deployments
+      emptyDir: {}
 
   extraVolumeMounts: |
     - name: realm-secret
       mountPath: "/realm/"
       readOnly: true
+    - name: deployments
+      mountPath: /opt/jboss/keycloak/standalone/deployments
+  
+  extraInitContainers: |
+    - name: extensions
+      image: busybox
+      imagePullPolicy: IfNotPresent
+      command:
+        - sh
+      args:
+        - -c
+        - |
+          echo "Copying extensions..."
+          wget -O /deployments/keycloak-metrics-spi.jar https://github.com/aerogear/keycloak-metrics-spi/releases/download/2.5.1/keycloak-metrics-spi-2.5.1.jar
+      volumeMounts:
+        - name: deployments
+          mountPath: /deployments
+
+  extraContainers: |
+    - name: keycloak-event-metrics-sidecar
+      image: 054217936305.dkr.ecr.eu-central-1.amazonaws.com/keycloak-event-metrics-sidecar:latest
+      imagePullPolicy: IfNotPresent
+      env:
+        - name: KEYCLOAK_SC__SVC_NAME
+          value: http://localhost:8080
+        - name: KEYCLOAK_ADMIN_USERNAME
+          value: admin
+        - name: KEYCLOAK_ADMIN_PASSWORD
+          value: admin
+      ports:
+        - containerPort: 9991
+          name: event-sidecar
+          protocol: TCP
+
+  service:
+    annotations:
+      prometheus.io/scrape: "true"
+      prometheus.io/port: "9991"
+      prometheus.io/path: "metrics"
   
   ingress:
     enabled: true
@@ -440,13 +495,18 @@ vault:
 prometheus:
   alertmanager:
     enabled: true
+    useClusterRole: true
   nodeExporter:
     enabled: true
   pushgateway:
     enabled: true
   server:
     enabled: true   
-
+    extraConfigmapMounts:
+      - name: prometheus-alerts
+        mountPath: /etc/config/alerts
+        configMap: prometheus-alerts
+        readOnly: true
   # (TODO) define your own alertmanager.yml configuration
   alertmanagerFiles:
     alertmanager.yml:
@@ -468,8 +528,15 @@ prometheus:
       receivers:
         - name: default-receiver
           email_configs:
-            - to: example@example.test
+            - to: diogom.o.moreira@gmail.com
+            #- to: luismferreira@deloitte.pt
       templates: []
+  
+  serverFiles:
+    prometheus.yml:
+      rule_files:
+        - /etc/config/rules/*.yml
+        - /etc/config/alerts/*.yml
 
 
 ###############################################################################
@@ -539,6 +606,15 @@ grafana:
         gnetId: 10000
         revision: 1
         datasource: Prometheus
+      keycloak-stats:
+        gnetId: 10441
+        revision: 1
+        datasource: Prometheus
+      nginx-ingress-stats:
+        gnetId: 9614
+        revision: 1
+        datasource: Prometheus
+
 
   grafana.ini:
     server:

@@ -1,0 +1,1342 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: sample-grafana-dashboard3
+  labels:
+    grafana_dashboard: "true"
+data:
+  admin-dashboard.json: |-
+    {
+      "annotations": {
+        "list": [
+          {
+            "builtIn": 1,
+            "datasource": "-- Grafana --",
+            "enable": true,
+            "hide": true,
+            "iconColor": "rgba(0, 211, 255, 1)",
+            "name": "Annotations & Alerts",
+            "target": {
+              "limit": 100,
+              "matchAny": false,
+              "tags": [],
+              "type": "dashboard"
+            },
+            "type": "dashboard"
+          }
+        ]
+      },
+      "editable": true,
+      "fiscalYearStartMonth": 0,
+      "gnetId": null,
+      "graphTooltip": 0,
+      "id": 8,
+      "iteration": 1639673909822,
+      "links": [],
+      "liveNow": false,
+      "panels": [
+        {
+          "collapsed": false,
+          "datasource": null,
+          "gridPos": {
+            "h": 1,
+            "w": 24,
+            "x": 0,
+            "y": 0
+          },
+          "id": 53,
+          "panels": [],
+          "title": "Tables",
+          "type": "row"
+        },
+        {
+          "datasource": null,
+          "description": "",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "custom": {
+                "align": "auto",
+                "displayMode": "auto"
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "percentage",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "red",
+                    "value": 80
+                  }
+                ]
+              }
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "CPU Usage (%)"
+                },
+                "properties": [
+                  {
+                    "id": "unit",
+                    "value": "percent"
+                  },
+                  {
+                    "id": "decimals"
+                  },
+                  {
+                    "id": "custom.displayMode",
+                    "value": "color-background"
+                  },
+                  {
+                    "id": "thresholds",
+                    "value": {
+                      "mode": "absolute",
+                      "steps": [
+                        {
+                          "color": "transparent",
+                          "value": null
+                        },
+                        {
+                          "color": "dark-green",
+                          "value": 1e-7
+                        },
+                        {
+                          "color": "blue",
+                          "value": 26
+                        },
+                        {
+                          "color": "orange",
+                          "value": 51
+                        },
+                        {
+                          "color": "dark-red",
+                          "value": 76
+                        }
+                      ]
+                    }
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Memory Usage (%)"
+                },
+                "properties": [
+                  {
+                    "id": "unit",
+                    "value": "percent"
+                  },
+                  {
+                    "id": "custom.displayMode",
+                    "value": "color-background-solid"
+                  },
+                  {
+                    "id": "thresholds",
+                    "value": {
+                      "mode": "absolute",
+                      "steps": [
+                        {
+                          "color": "transparent",
+                          "value": null
+                        },
+                        {
+                          "color": "dark-green",
+                          "value": 1e-7
+                        },
+                        {
+                          "color": "blue",
+                          "value": 26
+                        },
+                        {
+                          "color": "dark-orange",
+                          "value": 51
+                        },
+                        {
+                          "color": "dark-red",
+                          "value": 76
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "id": "decimals"
+                  }
+                ]
+              }
+            ]
+          },
+          "gridPos": {
+            "h": 6,
+            "w": 18,
+            "x": 0,
+            "y": 1
+          },
+          "id": 43,
+          "options": {
+            "showHeader": true,
+            "sortBy": []
+          },
+          "pluginVersion": "8.2.5",
+          "targets": [
+            {
+              "exemplar": true,
+              "expr": "kube_pod_info{exported_namespace=~\"user-$username\", pod=~\"$instanceType.*\"}",
+              "format": "table",
+              "hide": false,
+              "instant": true,
+              "interval": "",
+              "legendFormat": "",
+              "refId": "A"
+            },
+            {
+              "exemplar": true,
+              "expr": "rate(container_cpu_usage_seconds_total{namespace=~\"user-$username\",pod=~\"$instanceType.*\", container_name!=\"POD\"}[$__range])*100",
+              "format": "table",
+              "hide": true,
+              "instant": true,
+              "interval": "",
+              "legendFormat": "",
+              "refId": "B"
+            },
+            {
+              "exemplar": true,
+              "expr": "kube_pod_container_resource_requests{exported_namespace=~\"user-$username\",pod=~\"$instanceType.*\", resource=\"cpu\"}",
+              "format": "table",
+              "hide": false,
+              "instant": true,
+              "interval": "",
+              "legendFormat": "",
+              "refId": "C"
+            },
+            {
+              "exemplar": true,
+              "expr": "kube_pod_container_resource_requests{exported_namespace=~\"user-$username\",pod=~\"$instanceType.*\", resource=\"memory\", unit=\"byte\"} / (1073741824)",
+              "format": "table",
+              "hide": false,
+              "instant": true,
+              "interval": "",
+              "legendFormat": "",
+              "refId": "D"
+            },
+            {
+              "exemplar": true,
+              "expr": "kube_pod_container_resource_limits{exported_namespace=~\"user-$username\",pod=~\"$instanceType.*\", resource=\"cpu\"}",
+              "format": "table",
+              "hide": false,
+              "instant": true,
+              "interval": "",
+              "legendFormat": "",
+              "refId": "E"
+            },
+            {
+              "exemplar": true,
+              "expr": "(kube_pod_container_resource_limits{exported_namespace=~\"user-$username\",pod=~\"$instanceType.*\", resource=\"memory\"}) / (1073741824)",
+              "format": "table",
+              "hide": false,
+              "instant": true,
+              "interval": "",
+              "legendFormat": "",
+              "refId": "F"
+            },
+            {
+              "exemplar": true,
+              "expr": "round(max by (pod)(max_over_time(container_memory_usage_bytes{namespace=~\"user-$username\",pod=~\"$instanceType.*\" }[5m]))/ on (pod) (max by (pod) (kube_pod_container_resource_limits)) * 100,0.01)",
+              "format": "table",
+              "hide": true,
+              "instant": true,
+              "interval": "",
+              "legendFormat": "",
+              "refId": "H"
+            }
+          ],
+          "title": "Resources",
+          "transformations": [
+            {
+              "id": "seriesToColumns",
+              "options": {
+                "byField": "pod"
+              }
+            },
+            {
+              "id": "organize",
+              "options": {
+                "excludeByName": {
+                  "Cluster": true,
+                  "Environment": true,
+                  "GitHubRepo": true,
+                  "PodTenancy": true,
+                  "Time": true,
+                  "Time 1": true,
+                  "Time 3": true,
+                  "Time 4": true,
+                  "Time 5": true,
+                  "Time 6": true,
+                  "Value": true,
+                  "Value #A": true,
+                  "Value #C": false,
+                  "__name__": true,
+                  "__name__ 2": true,
+                  "__name__ 3": true,
+                  "__name__ 4": true,
+                  "__name__ 5": true,
+                  "app_kubernetes_io_component": true,
+                  "app_kubernetes_io_component 2": true,
+                  "app_kubernetes_io_component 3": true,
+                  "app_kubernetes_io_component 4": true,
+                  "app_kubernetes_io_component 5": true,
+                  "app_kubernetes_io_instance": true,
+                  "app_kubernetes_io_instance 2": true,
+                  "app_kubernetes_io_instance 3": true,
+                  "app_kubernetes_io_instance 4": true,
+                  "app_kubernetes_io_instance 5": true,
+                  "app_kubernetes_io_managed_by": true,
+                  "app_kubernetes_io_managed_by 2": true,
+                  "app_kubernetes_io_managed_by 3": true,
+                  "app_kubernetes_io_managed_by 4": true,
+                  "app_kubernetes_io_managed_by 5": true,
+                  "app_kubernetes_io_name": true,
+                  "app_kubernetes_io_name 2": true,
+                  "app_kubernetes_io_name 3": true,
+                  "app_kubernetes_io_name 4": true,
+                  "app_kubernetes_io_name 5": true,
+                  "app_kubernetes_io_part_of": true,
+                  "app_kubernetes_io_part_of 2": true,
+                  "app_kubernetes_io_part_of 3": true,
+                  "app_kubernetes_io_part_of 4": true,
+                  "app_kubernetes_io_part_of 5": true,
+                  "app_kubernetes_io_version": true,
+                  "app_kubernetes_io_version 2": true,
+                  "app_kubernetes_io_version 3": true,
+                  "app_kubernetes_io_version 4": true,
+                  "app_kubernetes_io_version 5": true,
+                  "beta_kubernetes_io_arch": true,
+                  "beta_kubernetes_io_instance_type": true,
+                  "beta_kubernetes_io_os": true,
+                  "container": true,
+                  "container 2": true,
+                  "container 3": true,
+                  "container 4": true,
+                  "container 5": true,
+                  "cpu": true,
+                  "created_by_kind": true,
+                  "created_by_name": true,
+                  "eks_amazonaws_com_capacityType": true,
+                  "eks_amazonaws_com_nodegroup": true,
+                  "eks_amazonaws_com_nodegroup_image": true,
+                  "eks_amazonaws_com_sourceLaunchTemplateId": true,
+                  "eks_amazonaws_com_sourceLaunchTemplateVersion": true,
+                  "exported_namespace": false,
+                  "exported_namespace 2": true,
+                  "exported_namespace 3": true,
+                  "exported_namespace 4": true,
+                  "exported_namespace 5": true,
+                  "exported_node": true,
+                  "exported_node 2": true,
+                  "exported_node 3": true,
+                  "exported_node 4": true,
+                  "exported_node 5": true,
+                  "failure_domain_beta_kubernetes_io_region": true,
+                  "failure_domain_beta_kubernetes_io_zone": true,
+                  "helm_sh_chart": true,
+                  "helm_sh_chart 2": true,
+                  "helm_sh_chart 3": true,
+                  "helm_sh_chart 4": true,
+                  "helm_sh_chart 5": true,
+                  "host_ip": true,
+                  "host_network": true,
+                  "id": true,
+                  "image": true,
+                  "instance": true,
+                  "instance 2": true,
+                  "instance 3": true,
+                  "instance 4": true,
+                  "instance 5": true,
+                  "instance 6": true,
+                  "job": true,
+                  "job 1": true,
+                  "job 2": true,
+                  "job 3": true,
+                  "job 4": true,
+                  "job 5": true,
+                  "job 6": true,
+                  "kubernetes_io_arch": true,
+                  "kubernetes_io_hostname": true,
+                  "kubernetes_io_os": true,
+                  "name": true,
+                  "namespace": false,
+                  "namespace 1": true,
+                  "namespace 2": true,
+                  "namespace 3": true,
+                  "namespace 4": true,
+                  "namespace 5": true,
+                  "namespace 6": true,
+                  "namespace 7": true,
+                  "node": true,
+                  "node 2": true,
+                  "node 3": true,
+                  "node 4": true,
+                  "node 5": true,
+                  "node_kubernetes_io_instance_type": true,
+                  "pod": false,
+                  "pod 2": false,
+                  "pod_ip": true,
+                  "resource": true,
+                  "resource 2": true,
+                  "resource 3": true,
+                  "resource 4": true,
+                  "service": true,
+                  "service 2": true,
+                  "service 3": true,
+                  "service 4": true,
+                  "service 5": true,
+                  "topology_kubernetes_io_region": true,
+                  "topology_kubernetes_io_zone": true,
+                  "uid": true,
+                  "uid 2": true,
+                  "uid 3": true,
+                  "uid 4": true,
+                  "uid 5": true,
+                  "unit": true,
+                  "unit 1": true,
+                  "unit 2": true,
+                  "unit 3": true,
+                  "unit 4": true
+                },
+                "indexByName": {
+                  "Cluster 1": 95,
+                  "Cluster 2": 140,
+                  "Environment 1": 96,
+                  "Environment 2": 141,
+                  "GitHubRepo 1": 97,
+                  "GitHubRepo 2": 142,
+                  "PodTenancy 1": 98,
+                  "PodTenancy 2": 143,
+                  "Time 1": 1,
+                  "Time 2": 24,
+                  "Time 3": 31,
+                  "Time 4": 52,
+                  "Time 5": 75,
+                  "Time 6": 118,
+                  "Time 7": 139,
+                  "Value #A": 23,
+                  "Value #B": 30,
+                  "Value #C": 51,
+                  "Value #D": 74,
+                  "Value #E": 72,
+                  "Value #F": 138,
+                  "Value #G": 73,
+                  "__name__ 1": 2,
+                  "__name__ 2": 32,
+                  "__name__ 3": 53,
+                  "__name__ 4": 76,
+                  "__name__ 5": 119,
+                  "__name__ 6": 144,
+                  "app_kubernetes_io_component 1": 3,
+                  "app_kubernetes_io_component 2": 33,
+                  "app_kubernetes_io_component 3": 54,
+                  "app_kubernetes_io_component 4": 77,
+                  "app_kubernetes_io_component 5": 120,
+                  "app_kubernetes_io_instance 1": 4,
+                  "app_kubernetes_io_instance 2": 34,
+                  "app_kubernetes_io_instance 3": 55,
+                  "app_kubernetes_io_instance 4": 78,
+                  "app_kubernetes_io_instance 5": 121,
+                  "app_kubernetes_io_managed_by 1": 5,
+                  "app_kubernetes_io_managed_by 2": 35,
+                  "app_kubernetes_io_managed_by 3": 56,
+                  "app_kubernetes_io_managed_by 4": 79,
+                  "app_kubernetes_io_managed_by 5": 122,
+                  "app_kubernetes_io_name 1": 6,
+                  "app_kubernetes_io_name 2": 36,
+                  "app_kubernetes_io_name 3": 57,
+                  "app_kubernetes_io_name 4": 80,
+                  "app_kubernetes_io_name 5": 123,
+                  "app_kubernetes_io_part_of 1": 7,
+                  "app_kubernetes_io_part_of 2": 37,
+                  "app_kubernetes_io_part_of 3": 58,
+                  "app_kubernetes_io_part_of 4": 81,
+                  "app_kubernetes_io_part_of 5": 124,
+                  "app_kubernetes_io_version 1": 8,
+                  "app_kubernetes_io_version 2": 38,
+                  "app_kubernetes_io_version 3": 59,
+                  "app_kubernetes_io_version 4": 82,
+                  "app_kubernetes_io_version 5": 125,
+                  "beta_kubernetes_io_arch 1": 99,
+                  "beta_kubernetes_io_arch 2": 145,
+                  "beta_kubernetes_io_instance_type 1": 100,
+                  "beta_kubernetes_io_instance_type 2": 146,
+                  "beta_kubernetes_io_os 1": 101,
+                  "beta_kubernetes_io_os 2": 147,
+                  "container 1": 25,
+                  "container 2": 39,
+                  "container 3": 60,
+                  "container 4": 83,
+                  "container 5": 126,
+                  "container 6": 148,
+                  "cpu": 26,
+                  "created_by_kind": 9,
+                  "created_by_name": 10,
+                  "eks_amazonaws_com_capacityType 1": 102,
+                  "eks_amazonaws_com_capacityType 2": 149,
+                  "eks_amazonaws_com_nodegroup 1": 103,
+                  "eks_amazonaws_com_nodegroup 2": 150,
+                  "eks_amazonaws_com_nodegroup_image 1": 104,
+                  "eks_amazonaws_com_nodegroup_image 2": 151,
+                  "eks_amazonaws_com_sourceLaunchTemplateId 1": 105,
+                  "eks_amazonaws_com_sourceLaunchTemplateId 2": 152,
+                  "eks_amazonaws_com_sourceLaunchTemplateVersion 1": 106,
+                  "eks_amazonaws_com_sourceLaunchTemplateVersion 2": 153,
+                  "exported_namespace 1": 11,
+                  "exported_namespace 2": 40,
+                  "exported_namespace 3": 61,
+                  "exported_namespace 4": 84,
+                  "exported_namespace 5": 127,
+                  "exported_node 1": 12,
+                  "exported_node 2": 41,
+                  "exported_node 3": 62,
+                  "exported_node 4": 85,
+                  "exported_node 5": 128,
+                  "failure_domain_beta_kubernetes_io_region 1": 107,
+                  "failure_domain_beta_kubernetes_io_region 2": 154,
+                  "failure_domain_beta_kubernetes_io_zone 1": 108,
+                  "failure_domain_beta_kubernetes_io_zone 2": 155,
+                  "helm_sh_chart 1": 13,
+                  "helm_sh_chart 2": 42,
+                  "helm_sh_chart 3": 63,
+                  "helm_sh_chart 4": 86,
+                  "helm_sh_chart 5": 129,
+                  "host_ip": 14,
+                  "host_network": 15,
+                  "id 1": 109,
+                  "id 2": 156,
+                  "image 1": 110,
+                  "image 2": 157,
+                  "instance 1": 16,
+                  "instance 2": 27,
+                  "instance 3": 43,
+                  "instance 4": 64,
+                  "instance 5": 87,
+                  "instance 6": 130,
+                  "instance 7": 158,
+                  "job 1": 17,
+                  "job 2": 28,
+                  "job 3": 44,
+                  "job 4": 65,
+                  "job 5": 88,
+                  "job 6": 131,
+                  "job 7": 159,
+                  "kubernetes_io_arch 1": 111,
+                  "kubernetes_io_arch 2": 160,
+                  "kubernetes_io_hostname 1": 112,
+                  "kubernetes_io_hostname 2": 161,
+                  "kubernetes_io_os 1": 113,
+                  "kubernetes_io_os 2": 162,
+                  "name 1": 114,
+                  "name 2": 163,
+                  "namespace 1": 18,
+                  "namespace 2": 29,
+                  "namespace 3": 45,
+                  "namespace 4": 66,
+                  "namespace 5": 89,
+                  "namespace 6": 132,
+                  "namespace 7": 164,
+                  "node 1": 19,
+                  "node 2": 46,
+                  "node 3": 67,
+                  "node 4": 90,
+                  "node 5": 133,
+                  "node_kubernetes_io_instance_type 1": 115,
+                  "node_kubernetes_io_instance_type 2": 165,
+                  "pod": 0,
+                  "pod_ip": 20,
+                  "resource 1": 47,
+                  "resource 2": 68,
+                  "resource 3": 91,
+                  "resource 4": 134,
+                  "service 1": 21,
+                  "service 2": 48,
+                  "service 3": 69,
+                  "service 4": 92,
+                  "service 5": 135,
+                  "topology_kubernetes_io_region 1": 116,
+                  "topology_kubernetes_io_region 2": 166,
+                  "topology_kubernetes_io_zone 1": 117,
+                  "topology_kubernetes_io_zone 2": 167,
+                  "uid 1": 22,
+                  "uid 2": 49,
+                  "uid 3": 70,
+                  "uid 4": 93,
+                  "uid 5": 136,
+                  "unit 1": 50,
+                  "unit 2": 71,
+                  "unit 3": 94,
+                  "unit 4": 137
+                },
+                "renameByName": {
+                  " ": "",
+                  "Time": "",
+                  "Value #B": "CPU Usage (%)",
+                  "Value #C": "CPU Requests (Core)",
+                  "Value #D": "Memory Request (Gb)",
+                  "Value #E": "CPU limit",
+                  "Value #F": "Memory Limit (Gb)",
+                  "Value #H": "Memory Usage (%)",
+                  "exported_namespace 1": "Namespace",
+                  "node 5": "",
+                  "pod": "Pod",
+                  "pod_ip": ""
+                }
+              }
+            }
+          ],
+          "type": "table"
+        },
+        {
+          "datasource": null,
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "custom": {
+                "align": "auto",
+                "displayMode": "auto"
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "red",
+                    "value": 80
+                  }
+                ]
+              }
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "__name__"
+                },
+                "properties": [
+                  {
+                    "id": "custom.width",
+                    "value": 232
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "bucket"
+                },
+                "properties": [
+                  {
+                    "id": "custom.width",
+                    "value": 103
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Value #B"
+                },
+                "properties": [
+                  {
+                    "id": "custom.width",
+                    "value": 71
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Total GBytes Used"
+                },
+                "properties": [
+                  {
+                    "id": "custom.width",
+                    "value": 163
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "namespace"
+                },
+                "properties": [
+                  {
+                    "id": "custom.width",
+                    "value": 117
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "pod"
+                },
+                "properties": [
+                  {
+                    "id": "custom.width",
+                    "value": 266
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Total Objects In Bucket"
+                },
+                "properties": [
+                  {
+                    "id": "custom.width",
+                    "value": 179
+                  }
+                ]
+              }
+            ]
+          },
+          "gridPos": {
+            "h": 6,
+            "w": 6,
+            "x": 18,
+            "y": 1
+          },
+          "id": 2,
+          "options": {
+            "showHeader": true,
+            "sortBy": []
+          },
+          "pluginVersion": "8.2.5",
+          "targets": [
+            {
+              "exemplar": true,
+              "expr": "minio_bucket_usage_object_total{bucket=~\"$username\"}",
+              "format": "table",
+              "instant": true,
+              "interval": "",
+              "legendFormat": "",
+              "refId": "A"
+            },
+            {
+              "exemplar": true,
+              "expr": "minio_bucket_usage_total_bytes{bucket=~\"$username\"} / (1073741824)",
+              "format": "table",
+              "hide": false,
+              "instant": true,
+              "interval": "",
+              "legendFormat": "",
+              "refId": "B"
+            }
+          ],
+          "title": "Minio General",
+          "transformations": [
+            {
+              "id": "seriesToColumns",
+              "options": {
+                "byField": "bucket"
+              }
+            },
+            {
+              "id": "organize",
+              "options": {
+                "excludeByName": {
+                  "Time": true,
+                  "Time 1": true,
+                  "Time 2": true,
+                  "Value #A": false,
+                  "Value #B": false,
+                  "__name__": true,
+                  "__name__ 1": true,
+                  "__name__ 2": true,
+                  "app_kubernetes_io_instance 1": true,
+                  "app_kubernetes_io_instance 2": true,
+                  "app_kubernetes_io_managed_by 1": true,
+                  "app_kubernetes_io_managed_by 2": true,
+                  "app_kubernetes_io_name 1": true,
+                  "app_kubernetes_io_name 2": true,
+                  "bucket 1": false,
+                  "bucket 2": false,
+                  "helm_sh_chart": true,
+                  "helm_sh_chart 1": true,
+                  "helm_sh_chart 2": true,
+                  "instance 1": true,
+                  "instance 2": true,
+                  "job 1": true,
+                  "job 2": true,
+                  "namespace 1": true,
+                  "namespace 2": true,
+                  "pod 1": true,
+                  "pod 2": true,
+                  "pod_template_hash": true,
+                  "pod_template_hash 1": true,
+                  "pod_template_hash 2": true,
+                  "server 1": true,
+                  "server 2": true
+                },
+                "indexByName": {
+                  "Time 1": 21,
+                  "Time 2": 24,
+                  "Value #A": 1,
+                  "Value #B": 2,
+                  "__name__ 1": 3,
+                  "__name__ 2": 12,
+                  "app_kubernetes_io_instance 1": 4,
+                  "app_kubernetes_io_instance 2": 13,
+                  "app_kubernetes_io_managed_by 1": 5,
+                  "app_kubernetes_io_managed_by 2": 14,
+                  "app_kubernetes_io_name 1": 6,
+                  "app_kubernetes_io_name 2": 15,
+                  "bucket": 0,
+                  "helm_sh_chart 1": 22,
+                  "helm_sh_chart 2": 25,
+                  "instance 1": 7,
+                  "instance 2": 16,
+                  "job 1": 8,
+                  "job 2": 17,
+                  "namespace 1": 9,
+                  "namespace 2": 18,
+                  "pod 1": 10,
+                  "pod 2": 19,
+                  "pod_template_hash 1": 23,
+                  "pod_template_hash 2": 26,
+                  "server 1": 11,
+                  "server 2": 20
+                },
+                "renameByName": {
+                  "Value #A": "Total Objects In Bucket",
+                  "Value #B": "Total GBytes Used",
+                  "app_kubernetes_io_managed_by": "Managed by",
+                  "bucket": "Bucket",
+                  "bucket 1": ""
+                }
+              }
+            }
+          ],
+          "type": "table"
+        },
+        {
+          "collapsed": false,
+          "datasource": null,
+          "gridPos": {
+            "h": 1,
+            "w": 24,
+            "x": 0,
+            "y": 7
+          },
+          "id": 55,
+          "panels": [],
+          "title": "Real Time Monitoring",
+          "type": "row"
+        },
+        {
+          "datasource": null,
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "palette-classic"
+              },
+              "custom": {
+                "axisLabel": "",
+                "axisPlacement": "auto",
+                "barAlignment": 0,
+                "drawStyle": "line",
+                "fillOpacity": 0,
+                "gradientMode": "none",
+                "hideFrom": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": false
+                },
+                "lineInterpolation": "linear",
+                "lineWidth": 1,
+                "pointSize": 5,
+                "scaleDistribution": {
+                  "type": "linear"
+                },
+                "showPoints": "auto",
+                "spanNulls": false,
+                "stacking": {
+                  "group": "A",
+                  "mode": "none"
+                },
+                "thresholdsStyle": {
+                  "mode": "off"
+                }
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "red",
+                    "value": 80
+                  }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 0,
+            "y": 8
+          },
+          "id": 49,
+          "options": {
+            "legend": {
+              "calcs": [],
+              "displayMode": "list",
+              "placement": "bottom"
+            },
+            "tooltip": {
+              "mode": "single"
+            }
+          },
+          "targets": [
+            {
+              "exemplar": true,
+              "expr": "rate(container_cpu_usage_seconds_total{namespace=~\"user-$username\",pod=~\"$instanceType.*\", container_name!=\"POD\", image=\"\"}[5m])*100",
+              "interval": "",
+              "legendFormat": "{{ "{{" }} pod {{ "}}" }} - {{ "{{" }} namespace {{ "}}" }}",
+              "refId": "A"
+            }
+          ],
+          "title": "CPU Usage",
+          "type": "timeseries"
+        },
+        {
+          "datasource": null,
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "palette-classic"
+              },
+              "custom": {
+                "axisLabel": "Memory [GB]",
+                "axisPlacement": "auto",
+                "barAlignment": 0,
+                "drawStyle": "line",
+                "fillOpacity": 0,
+                "gradientMode": "none",
+                "hideFrom": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": false
+                },
+                "lineInterpolation": "linear",
+                "lineWidth": 1,
+                "pointSize": 5,
+                "scaleDistribution": {
+                  "type": "linear"
+                },
+                "showPoints": "auto",
+                "spanNulls": false,
+                "stacking": {
+                  "group": "A",
+                  "mode": "none"
+                },
+                "thresholdsStyle": {
+                  "mode": "off"
+                }
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "red",
+                    "value": 80
+                  }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 8
+          },
+          "id": 51,
+          "options": {
+            "legend": {
+              "calcs": [],
+              "displayMode": "list",
+              "placement": "bottom"
+            },
+            "tooltip": {
+              "mode": "single"
+            }
+          },
+          "targets": [
+            {
+              "exemplar": true,
+              "expr": "container_memory_usage_bytes{namespace=~\"user-$username\",pod=~\"$instanceType.*\", container_name!=\"POD\", image=\"\"} / 1073741824",
+              "hide": false,
+              "interval": "",
+              "legendFormat": "{{ "{{" }} pod {{ "}}" }} - {{ "{{" }} namespace {{ "}}" }}",
+              "refId": "B"
+            }
+          ],
+          "title": "Memory Usage",
+          "type": "timeseries"
+        },
+        {
+          "datasource": null,
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "palette-classic"
+              },
+              "custom": {
+                "axisLabel": "",
+                "axisPlacement": "auto",
+                "barAlignment": 0,
+                "drawStyle": "line",
+                "fillOpacity": 0,
+                "gradientMode": "none",
+                "hideFrom": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": false
+                },
+                "lineInterpolation": "linear",
+                "lineWidth": 1,
+                "pointSize": 5,
+                "scaleDistribution": {
+                  "type": "linear"
+                },
+                "showPoints": "auto",
+                "spanNulls": false,
+                "stacking": {
+                  "group": "A",
+                  "mode": "none"
+                },
+                "thresholdsStyle": {
+                  "mode": "off"
+                }
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "red",
+                    "value": 80
+                  }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 0,
+            "y": 16
+          },
+          "id": 45,
+          "options": {
+            "legend": {
+              "calcs": [],
+              "displayMode": "list",
+              "placement": "bottom"
+            },
+            "tooltip": {
+              "mode": "single"
+            }
+          },
+          "targets": [
+            {
+              "exemplar": true,
+              "expr": "rate(container_network_receive_bytes_total{namespace=~\"user-$username\",pod=~\"$instanceType.*\",interface=\"eth0\"}[2m])",
+              "interval": "",
+              "legendFormat": "{{ "{{" }} pod {{ "}}" }} - {{ "{{" }} namespace {{ "}}" }}",
+              "refId": "A"
+            }
+          ],
+          "title": "Network  Inbound Traffic",
+          "type": "timeseries"
+        },
+        {
+          "datasource": null,
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "palette-classic"
+              },
+              "custom": {
+                "axisLabel": "",
+                "axisPlacement": "auto",
+                "barAlignment": 0,
+                "drawStyle": "line",
+                "fillOpacity": 0,
+                "gradientMode": "none",
+                "hideFrom": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": false
+                },
+                "lineInterpolation": "linear",
+                "lineWidth": 1,
+                "pointSize": 5,
+                "scaleDistribution": {
+                  "type": "linear"
+                },
+                "showPoints": "auto",
+                "spanNulls": false,
+                "stacking": {
+                  "group": "A",
+                  "mode": "none"
+                },
+                "thresholdsStyle": {
+                  "mode": "off"
+                }
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "red",
+                    "value": 80
+                  }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 16
+          },
+          "id": 56,
+          "options": {
+            "legend": {
+              "calcs": [],
+              "displayMode": "list",
+              "placement": "bottom"
+            },
+            "tooltip": {
+              "mode": "single"
+            }
+          },
+          "targets": [
+            {
+              "exemplar": true,
+              "expr": "rate(container_network_transmit_bytes_total{namespace=~\"user-$username\",pod=~\"$instanceType.*\",interface=\"eth0\"}[2m])",
+              "interval": "",
+              "legendFormat": "{{ "{{" }} pod {{ "}}" }} - {{ "{{" }} namespace {{ "}}" }}",
+              "refId": "A"
+            }
+          ],
+          "title": "Network  Outbound Traffic",
+          "type": "timeseries"
+        },
+        {
+          "datasource": null,
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "palette-classic"
+              },
+              "custom": {
+                "axisLabel": "",
+                "axisPlacement": "auto",
+                "barAlignment": 0,
+                "drawStyle": "line",
+                "fillOpacity": 0,
+                "gradientMode": "none",
+                "hideFrom": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": false
+                },
+                "lineInterpolation": "linear",
+                "lineWidth": 1,
+                "pointSize": 5,
+                "scaleDistribution": {
+                  "type": "linear"
+                },
+                "showPoints": "auto",
+                "spanNulls": false,
+                "stacking": {
+                  "group": "A",
+                  "mode": "none"
+                },
+                "thresholdsStyle": {
+                  "mode": "off"
+                }
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "red",
+                    "value": 80
+                  }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 0,
+            "y": 24
+          },
+          "id": 47,
+          "options": {
+            "legend": {
+              "calcs": [],
+              "displayMode": "list",
+              "placement": "bottom"
+            },
+            "tooltip": {
+              "mode": "single"
+            }
+          },
+          "targets": [
+            {
+              "exemplar": true,
+              "expr": "rate(container_network_receive_errors_total{namespace=~\"user-$username\",pod=~\"$instanceType.*\",interface=\"eth0\"}[2m])",
+              "interval": "",
+              "legendFormat": "{{ "{{" }} pod {{ "}}" }} - {{ "{{" }} namespace {{ "}}" }}",
+              "refId": "A"
+            },
+            {
+              "exemplar": true,
+              "expr": "rate(container_network_transmit_errors_total{namespace=~\"user-$username\",pod=~\"$instanceType.*\",interface=\"eth0\"}[2m])",
+              "hide": false,
+              "interval": "",
+              "legendFormat": "{{ "{{" }} pod {{ "}}" }} - {{ "{{" }} namespace {{ "}}" }}",
+              "refId": "B"
+            }
+          ],
+          "title": "Network Traffic Errors",
+          "type": "timeseries"
+        }
+      ],
+      "refresh": "",
+      "schemaVersion": 32,
+      "style": "dark",
+      "tags": [],
+      "templating": {
+        "list": [
+          {
+            "allValue": ".*",
+            "current": {
+              "selected": true,
+              "text": [
+                "All"
+              ],
+              "value": [
+                "$__all"
+              ]
+            },
+            "datasource": null,
+            "definition": "kube_namespace_created{exported_namespace=~\"user-.*\"}",
+            "description": null,
+            "error": null,
+            "hide": 0,
+            "includeAll": true,
+            "label": null,
+            "multi": true,
+            "name": "username",
+            "options": [],
+            "query": {
+              "query": "kube_namespace_created{exported_namespace=~\"user-.*\"}",
+              "refId": "StandardVariableQuery"
+            },
+            "refresh": 1,
+            "regex": "/.*exported_namespace=\"user-([^\"]*).*/",
+            "skipUrlSync": false,
+            "sort": 0,
+            "type": "query"
+          },
+          {
+            "allValue": ".*",
+            "current": {
+              "selected": true,
+              "text": [
+                "All"
+              ],
+              "value": [
+                "$__all"
+              ]
+            },
+            "datasource": null,
+            "definition": "kube_pod_info{exported_namespace=~\"user-.*\"}",
+            "description": null,
+            "error": null,
+            "hide": 0,
+            "includeAll": true,
+            "label": null,
+            "multi": true,
+            "name": "instanceType",
+            "options": [],
+            "query": {
+              "query": "kube_pod_info{exported_namespace=~\"user-.*\"}",
+              "refId": "StandardVariableQuery"
+            },
+            "refresh": 1,
+            "regex": "/.*pod=\"([^-]*).*/",
+            "skipUrlSync": false,
+            "sort": 0,
+            "type": "query"
+          }
+        ]
+      },
+      "time": {
+        "from": "now-5m",
+        "to": "now"
+      },
+      "timepicker": {},
+      "timezone": "",
+      "title": "Administrator Dashboard",
+      "uid": "Pw721d27ksss",
+      "version": 1
+    }
