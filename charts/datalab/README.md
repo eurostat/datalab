@@ -484,8 +484,6 @@ For an exhaustive configuration on Prometheus configurations visit the available
 | `prometheus.server`                                  | Server configuration block                                              | See Below                     |
 | `prometheus.server.enabled`                          | To enable the Prometheus Server                                         | `true`                        |
 | `prometheus.alertmanagerFiles`                       | Configmap entries for Alertmanager                                      | alertmanager.yml              |
-| `prometheus.serverFiles`                             | Configmap entries for Prometheus Server configurations                  | See Below                     |
-| `prometheus.serverFiles.alerting_rules.yml`          | Alerting rules configuration file                                       | '{}'                          |
 
 ```yaml
 prometheus:
@@ -523,66 +521,6 @@ It is recommended to configure the Alertmanager, it can be done through the `ale
           email_configs:
             - to: example@example.test # your smtp email
       templates: []
-```
-
-And also recommended to create [alerting rules](https://prometheus.io/docs/prometheus/latest/configuration/alerting_rules/) to send to the receiver to ensure proper usage of the platform, for example, to supervise users' resource consumption in Onyxia the following rules can be used and configured to the required thresholds:
-```yaml
-  serverFiles:
-    alerting_rules.yml:
-      groups:
-        - name: Quotas
-          rules:
-            - alert: CpuRequestQuotaExceeded
-              annotations:
-                description: '{{ $labels.exported_namespace }} has been over requesting cpu in the Onyxia services'
-                summary: '{{ $labels.exported_namespace }} cpu base request exceeded 0.5 cores'
-              expr: sum by (exported_namespace) (kube_pod_container_resource_requests{exported_namespace=~"user-.*", resource="cpu"}) > 0.5
-              for: 10m
-              labels:
-                severity: warning
-            - alert: MemRequestQuotaExceeded
-              annotations:
-                description: '{{ $labels.exported_namespace }} has been over requesting memory in the Onyxia services'
-                summary: '{{ $labels.exported_namespace }} memory base request exceeded 4 GB'
-              expr: sum by (exported_namespace) (kube_pod_container_resource_requests{exported_namespace=~"user-.*", resource="memory"}) / 1073741824 > 4
-              for: 10m
-              labels:
-                severity: warning
-            - alert: CpuLimitsQuotaExceeded
-              annotations:
-                description: '{{ $labels.exported_namespace }} has been over requesting cpu in the Onyxia services'
-                summary: '{{ $labels.exported_namespace }} cpu self-set limits exceeded 30 cores'
-              expr: sum by (exported_namespace) (kube_pod_container_resource_limits{exported_namespace=~"user-.*", resource="cpu"}) > 30
-              for: 10m
-              labels:
-                severity: warning
-            - alert: MemLimitsQuotaExceeded
-              annotations:
-                description: '{{ $labels.exported_namespace }} has been over requesting memory in the Onyxia services'
-                summary: '{{ $labels.exported_namespace }} memory self-set limits exceeded 64 GB'
-              expr: sum by (exported_namespace) (kube_pod_container_resource_limits{exported_namespace=~"user-.*", resource="memory"}) / 1073741824 > 64
-              for: 10m
-              labels:
-                severity: warning
-        - name: Usage
-          rules:
-            - alert: UserCpuHogging
-              annotations:
-                description: '{{ $labels.namespace }} instances are hogging more than 80% CPU in node {{ $labels.kubernetes_io_hostname}} in the past 30m'
-                summary: '{{ $labels.namespace }} instances are hogging more than 80% CPU in node {{ $labels.kubernetes_io_hostname}}'
-              expr: sum by (kubernetes_io_hostname, namespace) (rate (container_cpu_usage_seconds_total{namespace=~"user-.*", container=""}[30m])) / ignoring(namespace)  group_left sum by (kubernetes_io_hostname)(machine_cpu_cores) > 0.8
-              for: 0m
-              labels:
-                severity: critical
-            - alert: UserMemoryHogging
-              annotations:
-                description: '{{ $labels.namespace }} instances are hogging more than 80% of memory in node {{ $labels.kubernetes_io_hostname}} in the past 30m'
-                summary: '{{ $labels.namespace }} instances are hogging more than 80% of memory in node {{ $labels.kubernetes_io_hostname}}'
-              expr: sum by (kubernetes_io_hostname, namespace) (rate (container_memory_usage_bytes{namespace=~"user-.*", container=""}[30m])) / ignoring(namespace)  group_left sum by (kubernetes_io_hostname)(machine_memory_bytes) > 0.8
-              for: 0m
-              labels:
-                severity: critical
-
 ```
 
 ### Grafana
