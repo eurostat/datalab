@@ -42,23 +42,17 @@ The main component of the Data Lab is [Onyxia](https://github.com/InseeFrLab/ony
 - Authentication, based on the [Open ID Connect](https://openid.net/connect/) or [OAuth 2.0](https://oauth.net/2/), for Onyxia and multi-tenant services (i.e., MinIO, Vault, Grafana, Apache Superset, and GitLab)
 - Authorisation, managed by the platform administrator on Keycloak's administrator portal, through `jwt` claims
 
-[MinIO](https://min.io/) will serve as the storage provider, with authenticated access from Keycloak through:
-- Onyxia web interface
-- MinIO console (web interface)
-- MinIO CLI
+[MinIO](https://min.io/) will serve as the storage provider, with Keycloak SSO.
 
-[Vault](https://www.vaultproject.io/) will serve as the secrets manager service, with authenticated access from Keycloak through:
-- Onyxia web interface
-- Vault CLI
+[Vault](https://www.vaultproject.io/) will serve as the secrets manager service, with Keycloak SSO.
 
-[Prometheus](https://prometheus.io/) and [Grafana](https://grafana.com/) will be for the monitoring and observation, with authenticated access from Keycloak through:
-- Grafana interface (link available on Onyxia web, or use a known host name, e.g., `grafana.example-data-lab.com`).
+[CKAN](https://ckan.org/) will serve as the Data Catalog, with Keycloak SSO.
 
-[Apache Superset](https://superset.apache.org/) will be the data visualisation service, with authenticated access from Keycloak through:
-- Apache Superset interface (link available on Onyxia web, or use a known host name, e.g., `apachesuperset.example-data-lab.com`).
+[Prometheus](https://prometheus.io/) and [Grafana](https://grafana.com/) will be for the monitoring and observation, with Keycloak SSO, to provide dashboards with user's consumption and platform load.
 
-[GitLab](https://about.gitlab.com/) will be the projects and code collaboration tool, with authenticated access from Keycloak through:
-- GitLab interface (link available on Onyxia web, or use a known host name, e.g., `gitlab.example-data-lab.com`).
+[Apache Superset](https://superset.apache.org/) will be the data visualisation service, with Keycloak SSO.
+
+[GitLab](https://about.gitlab.com/) will be the projects and code collaboration tool, with Keycloak SSO.
 
 
 
@@ -171,6 +165,8 @@ The purpose to add a simple storage service is for users to have their own stora
 
 > This configurations should be automated during launching of the Data Lab service, for more information consult the [DEPLOYMENT.md](./DEPLOYMENT.md) document. 
 
+Additional configuration for users to access buckets with groups retrieved from token claim `groups` can be done at policy level. To allow a user access it would be necessary to add him to a group and to edit the policy for that specific bucket.
+
 More information on how to configure MinIO for Onyxia can be found on [Onyxia GitHub](https://github.com/InseeFrLab/onyxia).
 
 
@@ -204,11 +200,18 @@ Vault users should be able to authenticate themselves with their token, and be r
 - Create a role for the Data Lab Users.
 - Configure policies for user access based on `preferred_name` claim and initialize secret engine.
 
-> This configurations should be automated during launching of the Data Lab service, for more information consult the [DEPLOYMENT.md](./DEPLOYMENT.md) document. 
+> This configurations are to be ran in a script after launching of the Data Lab service, for more information consult the [DEPLOYMENT.md](./DEPLOYMENT.md) document. 
 
 More information on how to configure Vault for Onyxia can be found on [Onyxia GitHub](https://github.com/InseeFrLab/onyxia).
 
 
+
+
+# Data Catalog
+A Data Catalog service will be implemented by [CKAN](https://ckan.org/).
+
+## CKAN configuration
+CKAN can (optionally) be deployed with the rest of the platform, it is necessary to keep in mind that most CKAN configurations have to be made in the image itself, for more information consult the [DEPLOYMENT.md](./DEPLOYMENT.md) document.
 
 
 

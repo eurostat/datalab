@@ -31,6 +31,7 @@
     ,{
       "username" : "{{ .name }}",
       "enabled": true,
+      "email": "{{ .name }}@example-demo.test",
       "credentials" : [
         { 
           "type" : "password",
@@ -129,9 +130,49 @@
             "id.token.claim": "false",
             "access.token.claim": "true"
           }
+        },
+        {
+          "name": "audience-vault-onyxia-client",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "consentRequired": false,
+          "config": {
+            "included.client.audience": "{{ .Values.onyxia.ui.env.OIDC_CLIENT_ID }}",
+            "id.token.claim": "false",
+            "access.token.claim": "true"
+          }
         }
       ]
-    } 
+    },
+    {
+      "clientId": "ckan",
+      "rootUrl": "https://ckan.clouddatalab.eu/",
+      "adminUrl": "https://ckan.clouddatalab.eu/",
+      "surrogateAuthRequired": false,
+      "enabled": true,
+      "alwaysDisplayInConsole": false,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "{{ .Values.ckan.clientsecret }}",
+      "redirectUris": [
+        "https://ckan.clouddatalab.eu/*"
+      ],
+      "webOrigins": [
+        "https://ckan.clouddatalab.eu"
+      ],
+      "notBefore": 0,
+      "bearerOnly": false,
+      "consentRequired": false,
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": true,
+      "serviceAccountsEnabled": false,
+      "publicClient": false,
+      "frontchannelLogout": false,
+      "protocol": "openid-connect",
+      "attributes": {
+        "oauth2.device.authorization.grant.enabled": "true"
+      }
+    }
 	  {{- if .Values.minio.enabled -}}
 	  ,
     {
@@ -181,6 +222,26 @@
           }
         }
       ]
+    }
+    {{- end -}}
+	  {{- if .Values.grafana.enabled -}}
+	  ,
+    {
+      "clientId": "grafana",
+      "rootUrl": "https://grafana.{{ .Values.domainName }}",
+      "baseUrl": "",
+      "enabled": true,
+      "publicClient": true,
+      "redirectUris": [
+        "https://grafana.{{ .Values.domainName }}/*"
+      ],
+      "webOrigins": [
+        "*"
+      ],
+      "attributes": {
+        "oauth2.device.authorization.grant.enabled": "true",
+        "use.refresh.tokens": "true"
+      }
     }
     {{- end -}}
   ]

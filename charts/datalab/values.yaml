@@ -67,13 +67,25 @@ keycloak:
 
   # (TODO) Set PostgreSQL secrets for Keycloak to use
   postgresql:
-    enabled: true
+    enabled: false
     postgresqlUsername: keycloak
     postgresqlPassword: keycloak
     postgresqlDatabase: keycloak
 
-  # (TODO) Sey Keycloak admin user and password
+  # (TODO) Set Keycloak admin user and password
   extraEnv: |
+    - name: DB_VENDOR
+      value: postgres
+    - name: DB_ADDR
+      value: postgres-headless
+    - name: DB_PORT
+      value: "5432"
+    - name: DB_DATABASE
+      value: keycloak
+    - name: DB_USER
+      value: keycloak
+    - name: DB_PASSWORD
+      value: keycloak
     - name: KEYCLOAK_USER
       value: admin
     - name: KEYCLOAK_PASSWORD
@@ -188,6 +200,11 @@ minio:
       nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
       nginx.ingress.kubernetes.io/preserve-trailing-slash: "true"
 
+  podAnnotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/path: "/minio/v2/metrics/cluster"
+    prometheus.io/port: "9000"
+
 ###############################################################################
 # Onyxia Chart configuration values (Chart version 1.3.0, inseefrlab)
 # - Keep up to date with latest images if using InseeFrLab catalogs
@@ -267,6 +284,9 @@ onyxia:
       OIDC_CLIENT_ID: onyxia-client
       OIDC_URL: https://keycloak.example.test/auth
       MINIO_URL: https://minio.example.test
+      VAULT_URL: https://vault.example.test
+      REACT_APP_DATA_CATALOG_URL: ckan
+      REACT_APP_DOMAIN_URL: example.test
 
   api:
     name: api
@@ -346,7 +366,7 @@ onyxia:
             "networkPolicy": true
           },
           "expose": { "domain": "example.test" },
-          "monitoring": { "URLPattern": "https://graphana.example.test/path/to/dashboard/?namespace=$NAMESPACE_ID&instance=$INSTANCE_ID" },
+          "monitoring": { "URLPattern": "https://grafana.example.test/d/kYYgRWBMz/users-services?orgId=1&refresh=5s&var-namespace=$NAMESPACE&var-instance=$INSTANCE" },
           "cloudshell": {
             "catalogId": "inseefrlab-helm-charts-datascience",
             "packageName": "cloudshell"
@@ -356,7 +376,7 @@ onyxia:
           "S3": { 
             "URL": "https://minio.example.test", 
             "monitoring": { 
-              "URLPattern": "https://graphana.example.test/path/to/dashboard/?bucket=$BUCKET_ID"
+              "URLPattern": "https://grafana.example.test/d/PhCwEJkMz/user-s3-storage?orgId=1&var-username=$BUCKET_ID"
             } 
           } 
         },
@@ -377,3 +397,296 @@ onyxia:
       }
     ]
 
+###############################################################################
+# Vault Chart (Chart version 0.18.0, HashiCorp)
+# - It is necessary to init, unseal and configure the Vault after deployment
+# - To use with Onyxia it is necessary to have CORS headers
+###############################################################################
+vault:
+  server:
+    enabled: true
+    
+    ingress:
+      enabled: true
+      annotations:
+        kubernetes.io/ingress.class: nginx
+        nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+        nginx.ingress.kubernetes.io/preserve-trailing-slash: "true"
+
+      # When HA mode is enabled and K8s service registration is being used,
+      # configure the ingress to point to the Vault active service.
+      activeService: true
+      hosts:
+        - host: vault.example.test
+
+    volumes:
+      - name: config-vol
+        configMap:
+          name: vault-scripts
+          defaultMode: 0777
+          
+    volumeMounts:
+      - mountPath: /vault/scripts/
+        name: config-vol
+        readOnly: false
+
+    dataStorage:
+      size: 5Gi
+
+###############################################################################
+# Prometheus Chart (Chart version 15.0.1, Prometheus Community)
+# - It is necessary to define the alertmanager.yml configuration first
+###############################################################################
+prometheus:
+  alertmanager:
+    enabled: true
+  nodeExporter:
+    enabled: true
+  pushgateway:
+    enabled: true
+  server:
+    enabled: true   
+
+  # (TODO) define your own alertmanager.yml configuration
+  alertmanagerFiles:
+    alertmanager.yml:
+      global:
+        resolve_timeout: 5m
+        http_config:
+          follow_redirects: true
+        smtp_from: example.test@example.test
+        smtp_smarthost: smtp.example.test:587
+        smtp_auth_username: example.test@example.test
+        smtp_auth_password: example-password
+        smtp_require_tls: true
+      route:
+        receiver: default-receiver
+        continue: false
+        group_wait: 10s
+        group_interval: 5m
+        repeat_interval: 3h
+      receivers:
+        - name: default-receiver
+          email_configs:
+            - to: example@example.test
+      templates: []
+
+
+###############################################################################
+# Grafana Chart (Chart version 6.17.10, Grafana)
+# - Configured Prometheus as data source for Grafana
+# - Configured Keycloak SSO in the grafana.ini
+# - Import dashboards from labeled configmaps with the sidecar
+###############################################################################
+grafana:
+  enabled: true
+
+  # (TODO) Place your own admin credentials here
+  adminUser: admin
+  adminPassword: strongpassword
+  
+  ingress:
+      enabled: true
+      annotations:
+        kubernetes.io/ingress.class: nginx
+        nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+        nginx.ingress.kubernetes.io/preserve-trailing-slash: "true"
+      hosts:
+        - grafana.example.test
+      tls:
+        - hosts:
+            - grafana.example.test
+
+  sidecar:
+    dashboards:
+      enabled: true
+      label: grafana_dashboard
+    datasources:
+      enabled: true
+
+  datasources:
+    datasources.yaml:
+      apiVersion: 1
+      datasources:
+        - name: Prometheus
+          type: prometheus
+          url: http://{{ .Release.Name }}-prometheus-server.{{ .Release.Namespace }}.svc.cluster.local
+          access: proxy
+          isDefault: true
+          jsonData:
+            timeInterval: 30s
+
+  dashboardProviders:
+    default-provider.yaml:
+      apiVersion: 1
+      providers:
+        - name: 'default'
+          orgId: 1
+          folder: ''
+          folderUid: ''
+          type: file
+          disableDeletion: false
+          updateIntervalSeconds: 10
+          allowUiUpdates: true 
+          options:
+            path: /var/lib/grafana/dashboards
+            foldersFromFilesStructure: true
+
+  dashboards:
+    default:
+      k8s-stats:
+        # https://grafana.com/grafana/dashboards/10000
+        gnetId: 10000
+        revision: 1
+        datasource: Prometheus
+
+  grafana.ini:
+    server:
+      root_url: https://grafana.example.test
+    auth.generic_oauth:
+      enabled: true
+      scopes: "openid profile email"
+      auth_url: https://keycloak.example.test/auth/realms/datalab-demo/protocol/openid-connect/auth
+      token_url: https://keycloak.example.test/auth/realms/datalab-demo/protocol/openid-connect/token
+      api_url: https://keycloak.example.test/auth/realms/datalab-demo/protocol/openid-connect/userinfo
+      client_id: grafana
+      signout_redirect_url: https://grafana.example.test
+
+
+###############################################################################
+# Ckan Chart
+# - !! TODO !! Create your own CKAN image if you want to use Keycloak SSO
+###############################################################################
+ckan:
+  clientsecret: your-client-secret
+
+  image:
+    repository: # (TODO) place your own image here! 
+    tag: latest
+    pullPolicy: Always
+  
+  # DBDeploymentName -- Variable for name override for postgres deployment
+  DBDeploymentName: &DBDeploymentName postgres
+  # DBHost -- Variable for name of headless svc from postgres deployment
+  DBHost: &DBHost postgres-headless
+  # MasterDBName -- Variable for name of the master user database in PostgreSQL
+  MasterDBName: &MasterDBName ckan
+  # MasterDBUser -- Variable for master user name for PostgreSQL
+  MasterDBUser: &MasterDBUser postgres
+  # MasterDBPass -- Variable for password for the master user in PostgreSQL
+  MasterDBPass: &MasterDBPass postgres
+
+  # CkanDBName -- Variable for name of the database used by CKAN
+  CkanDBName: &CkanDBName ckan_default
+  # CkanDBUser -- Variable for username for the owner of the CKAN database
+  CkanDBUser: &CkanDBUser ckan_default
+  # CkanDBPass -- Variable for password for the CKAN database owner
+  CkanDBPass: &CkanDBPass ckan_default
+  # DatastoreDBName -- Variable for name of the database used by Datastore
+  DatastoreDBName: &DatastoreDBName datastore_default
+  # DatastoreRWDBUser -- Variable for username for the user with write access to the datastore database
+  DatastoreRWDBUser: &DatastoreRWDBUser datastorerw
+  # DatastoreRWDBPass -- Variable for password for the datastore database user with write access
+  DatastoreRWDBPass: &DatastoreRWDBPass datastorerw
+  # DatastoreRODBUser -- Variable for username for the user with read access to the datastore database
+  DatastoreRODBUser: &DatastoreRODBUser datastorero
+  # DatastoreRODBPass -- Variable for password for the datastore database user with read access
+  DatastoreRODBPass: &DatastoreRODBPass datastorero
+
+
+  ingress:
+    enabled: true
+    annotations:
+      kubernetes.io/ingress.class: nginx
+      nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+      nginx.ingress.kubernetes.io/preserve-trailing-slash: "true"
+      kubernetes.io/ingress.allow-http: "false"
+      kubernetes.io/tls-acme: "true"
+    hosts:
+      - host: ckan.example.test
+        paths: [/]
+    tls: 
+      - hosts:
+          - ckan.example.test
+  
+  ckan:
+    siteUrl: "https://ckan.example.test"
+
+    psql:
+      # ckan.psql.runOnAzure -- Set to true to run on Azure (if true wont run on anything other then azure) set to false to run on other platforms
+      runOnAzure: false
+      # ckan.psql.initialize -- Flag whether to initialize the PostgreSQL instance with the provided users and databases
+      initialize: true
+      # ckan.psql.masterUser -- PostgreSQL master username
+      masterUser: *MasterDBUser
+      # ckan.psql.masterPassword -- PostgreSQL master user password
+      masterPassword: *MasterDBPass
+      # ckan.psql.masterDatabase -- PostgreSQL database for the master user
+      masterDatabase: *MasterDBName
+    db:
+      # ckan.db.ckanDbUrl -- Url of the PostgreSQL server where the CKAN database is hosted
+      ckanDbUrl: *DBHost
+      # ckan.db.ckanDbName -- Name of the database to be used by CKAN
+      ckanDbName: *CkanDBName
+      # ckan.db.ckanDbUser -- Username of the database to be used by CKAN
+      ckanDbUser: *CkanDBUser
+      # ckan.db.ckanDbPassword -- Password of the user for the database to be used by CKAN
+      ckanDbPassword: *CkanDBPass
+    datastore:
+      # ckan.datastore.RwDbUrl -- Url of the PostgreSQL server where the datastore database is hosted
+      RwDbUrl: *DBHost
+      # ckan.datastore.RwDbName -- Name of the database to be used for Datastore
+      RwDbName: *DatastoreDBName
+      # ckan.datastore.RwDbUser -- Username for the datastore database with write permissions
+      RwDbUser: *DatastoreRWDBUser
+      # ckan.datastore.RwDbPassword -- Password for the datastore write permissions user
+      RwDbPassword: *DatastoreRWDBPass
+      # ckan.datastore.RoDbUrl -- Url of the PostgreSQL server where the datastore database is hosted
+      RoDbUrl: *DBHost
+      # ckan.datastore.RoDbName -- Name of the database to be used for Datastore
+      RoDbName: *DatastoreDBName
+      # ckan.datastore.RoDbUser -- Username for the datastore database with read permissions
+      RoDbUser: *DatastoreRODBUser
+      # ckan.datastore.RoDbPassword -- Password for the datastore read permissions user
+      RoDbPassword: *DatastoreRODBPass
+
+  postgresql:
+    # postgresql.enabled -- Flag to control whether to deploy PostgreSQL
+    enabled: false
+    persistence:
+      # postgresql.persistence.size -- Size of the PostgreSQL pvc
+      size: 1Gi
+
+    # postgresql.fullnameOverride -- Name override for the PostgreSQL deployment
+    fullnameOverride: *DBDeploymentName
+    # postgresql.pgPass -- Password for the master PostgreSQL user.
+    # Feeds into the `postgrescredentials` secret that is provided to the PostgreSQL chart
+    pgPass: *MasterDBPass
+
+###############################################################################
+# PostgreSQL Chart
+# - Configure postgresql to be used as a common DB or do it as sub dependencies
+#   on services and disable this one.
+###############################################################################
+postgresql:
+  # postgresql.enabled -- Flag to control whether to deploy PostgreSQL
+  enabled: true
+
+  global:
+    postgresql:
+      postgresqlDatabase: "user"
+      postgresqlUsername: "user"
+      postgresqlPassword: "user"
+      servicePort: 5432
+
+  persistence:
+    size: 1Gi
+
+  fullnameOverride: *DBDeploymentName
+  pgPass: *MasterDBPass
+
+  postgresqlPostgresPassword: "postgres"
+
+  initdbScriptsSecret: "secret-basic-auth" 
+  initdbUser: "postgres"
+  initdbPassword: "postgres"

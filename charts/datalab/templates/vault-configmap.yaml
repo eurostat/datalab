@@ -1,0 +1,54 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: "vault-scripts"
+  labels:
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    helm.sh/chart: "{{ .Chart.Name }}-{{ .Chart.Version }}"
+data:
+  configscript.sh: |-
+    # Authentication Kubernetes (OPTIONAL)
+    vault auth enable kubernetes
+
+    vault write auth/kubernetes/config \
+      token_reviewer_jwt="$(cat /var/run/secrets/kubernetes.io/serviceaccount/token)" \
+      kubernetes_host=https://${KUBERNETES_PORT_443_TCP_ADDR}:443 \
+      kubernetes_ca_cert=@/var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+
+    # Authentication JWT
+
+    vault auth enable jwt
+
+    # get the jwt auth id
+    export JWT_AUTH=$(vault auth list | grep jwt | awk '{print $3}')
+    # auth_jwt_xxx to replace on the file you'll create
+    cat <<EOF > tmp/onyxia-kv-policy.hcl
+    path "onyxia-kv/{{ "{{" }}identity.entity.aliases.$JWT_AUTH.name{{ "}}" }}/*" {
+      capabilities = ["create","update","read","delete","list"]
+    }
+
+    path "onyxia-kv/data/{{ "{{" }}identity.entity.aliases.$JWT_AUTH.name{{ "}}" }}/*" {
+      capabilities = ["create","update","read"]
+    }
+
+    path "onyxia-kv/metadata/{{ "{{" }}identity.entity.aliases.$JWT_AUTH.name{{ "}}" }}/*" {
+      capabilities = ["delete", "list", "read"]
+    }
+    EOF
+
+    vault write auth/jwt/config \
+        oidc_discovery_url="https://keycloak.clouddatalab.eu/auth/realms/datalab-demo" \
+        default_role="onyxia-user"
+
+    vault write auth/jwt/role/onyxia-user \
+        role_type="jwt" \
+        bound_audiences="onyxia-client" \
+        user_claim="preferred_username" \
+        groups_claim="groups" \
+        policies="onyxia-kv"
+
+    vault policy write onyxia-kv tmp/onyxia-kv-policy.hcl
+
+    vault secrets enable -path=onyxia-kv kv-v2
+
