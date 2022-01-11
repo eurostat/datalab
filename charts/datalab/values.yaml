@@ -160,21 +160,21 @@ keycloak:
         - name: deployments
           mountPath: /deployments
 
-  extraContainers: |
-    - name: keycloak-event-metrics-sidecar
-      image: 054217936305.dkr.ecr.eu-central-1.amazonaws.com/keycloak-event-metrics-sidecar:latest
-      imagePullPolicy: IfNotPresent
-      env:
-        - name: KEYCLOAK_SC__SVC_NAME
-          value: http://localhost:8080
-        - name: KEYCLOAK_ADMIN_USERNAME
-          value: admin
-        - name: KEYCLOAK_ADMIN_PASSWORD
-          value: admin
-      ports:
-        - containerPort: 9991
-          name: event-sidecar
-          protocol: TCP
+  extraContainers: "" # |
+    # - name: keycloak-event-metrics-sidecar
+    #   image: <your docker image based on keycloak-metrics-sidecar>
+    #   imagePullPolicy: IfNotPresent
+    #   env:
+    #     - name: KEYCLOAK_SC__SVC_NAME
+    #       value: http://localhost:8080
+    #     - name: KEYCLOAK_ADMIN_USERNAME
+    #       value: admin
+    #     - name: KEYCLOAK_ADMIN_PASSWORD
+    #       value: admin
+    #   ports:
+    #     - containerPort: 9991
+    #       name: event-sidecar
+    #       protocol: TCP
 
   service:
     annotations:
