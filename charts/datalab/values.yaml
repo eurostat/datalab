@@ -12,10 +12,9 @@ smtpServer: |-
     "from": "",
     "fromDisplayName": "",
     "ssl": "",
-    "user": ""
+    "user": "test-user@example.test"
   }
 
-# Demo users and groups/projects to define
 demo:
   enabled: true
   users:
@@ -46,6 +45,39 @@ alertThresholds:
   MemRequestQuota: 4
   CpuLimitsQuota: 30
   MemLimitsQuota: 64
+
+userNotification:
+  enabled: false 
+  service:
+    annotations: {}
+    labels: {}
+    webhookPort: 9992
+  deployment:
+    annotations: {}
+    labels: {}
+    podAnnotations: {}
+    podLabels: {}
+    containerImage: TODO
+    imagePullPolicy: Always
+    ports: |
+      - containerPort: 9992
+        name: notify-users
+        protocol: TCP
+    extraEnv: |
+      - name: KEYCLOAK_SC__SVC_NAME
+        value: http://{{ .Release.Name }}-keycloak-http.default.svc.cluster.local:80
+      - name: KEYCLOAK_ADMIN_USERNAME
+        value: TODO
+      - name: KEYCLOAK_ADMIN_PASSWORD
+        value: TODO
+      - name: SMTP_USERNAME
+        value: test-user@example.test
+      - name: SMTP_PASSWORD
+        value: TODO
+      - name: SMTP_SERVER
+        value: TODO
+      - name: SMTP_SERVER_PORT
+        value: TODO
 
 ###############################################################################
 # Keycloak Chart configuration values (Chart version 15.1.0, codocentric)
@@ -101,7 +133,7 @@ keycloak:
     - name: KEYCLOAK_USER
       value: {{ .Values.kcUser }}
     - name: KEYCLOAK_PASSWORD
-      value: {{ .Values.kcUser }}
+      value: {{ .Values.kcPassword }}
     - name: KEYCLOAK_IMPORT
       value: /realm/realm.json 
     - name: PROXY_ADDRESS_FORWARDING
@@ -160,21 +192,21 @@ keycloak:
         - name: deployments
           mountPath: /deployments
 
-  extraContainers: "" # |
-    # - name: keycloak-event-metrics-sidecar
-    #   image: <your docker image based on keycloak-metrics-sidecar>
-    #   imagePullPolicy: IfNotPresent
-    #   env:
-    #     - name: KEYCLOAK_SC__SVC_NAME
-    #       value: http://localhost:8080
-    #     - name: KEYCLOAK_ADMIN_USERNAME
-    #       value: admin
-    #     - name: KEYCLOAK_ADMIN_PASSWORD
-    #       value: admin
-    #   ports:
-    #     - containerPort: 9991
-    #       name: event-sidecar
-    #       protocol: TCP
+  extraContainers: |
+    - name: keycloak-event-metrics-sidecar
+      image: TODO
+      imagePullPolicy: IfNotPresent
+      env:
+        - name: KEYCLOAK_SC__SVC_NAME
+          value: http://localhost:8080
+        - name: KEYCLOAK_ADMIN_USERNAME
+          value: TODO
+        - name: KEYCLOAK_ADMIN_PASSWORD
+          value: TODO
+      ports:
+        - containerPort: 9991
+          name: event-sidecar
+          protocol: TCP
 
   service:
     annotations:
@@ -186,6 +218,7 @@ keycloak:
     enabled: true
     annotations:
       kubernetes.io/ingress.class: nginx
+      nginx.ingress.kubernetes.io/proxy-buffer-size: "128k"
     rules:
       - host: "keycloak.example.test"
         paths:
@@ -201,7 +234,7 @@ keycloak:
 # - Persistence should be enabled with PVC for the data (further configuration is possible)
 # - Configure Keycloak as id provider with environment variables
 # - Post-install job created to create a policy in this MinIO server
-# - (WARNING) !! MinIO root password is hardcoded here don't commit this file !!
+# - (WARNING) !!!!!! MinIO root password is hardcoded here !!!!!!
 ###############################################################################
 minio:
   enabled: true
@@ -264,7 +297,8 @@ minio:
 # Onyxia Chart configuration values (Chart version 1.3.0, inseefrlab)
 # - Keep up to date with latest images if using InseeFrLab catalogs
 # - API cluster admin has to be set to true to deploy on user's namespaces
-# - ensure hostnames, client-id and realm configurations match the _realm-config.tpl
+# - Ensure hostnames, client-id and realm configurations match the _realm-config.tpl
+# - Ensure UID for dashboards is consistent with the ones in configmaps
 ###############################################################################
 onyxia:
   # Default values for onyxia-bis.
@@ -299,7 +333,7 @@ onyxia:
     replicaCount: 1
     image:
       name: inseefrlab/onyxia-web
-      version: latest # 482aa97b0156
+      version: latest
       pullPolicy: Always
     podSecurityContext:
       {}
@@ -342,13 +376,28 @@ onyxia:
       VAULT_URL: https://vault.example.test
       REACT_APP_DATA_CATALOG_URL: ckan
       REACT_APP_DOMAIN_URL: example.test
+      REACT_APP_EXTRA_LEFTBAR_ITEMS: |
+        {
+          "links": 
+          [
+            {
+              "label": { "en": "My Data Visualization Tool", "fr": "Outil de visualisation de donn\u00e9es" },
+              "iconId": "SsidChart",
+              "url": "https://apache-superset.example.test",
+            },{
+              "label": { "en": "My Data Catalog", "fr": "Mes catalogue de donn\u00e9es" },
+              "iconId": "MenuBookOutlined",
+              "url": "https://ckan.example.test",
+            }
+          ]
+        }
 
   api:
     name: api
     replicaCount: 1
     image:
       name: inseefrlab/onyxia-api
-      version: latest # 19f8682347c2
+      version: latest
       pullPolicy: Always
     podSecurityContext:
       {}
@@ -493,6 +542,14 @@ vault:
 # - It is necessary to define the alertmanager.yml configuration first
 ###############################################################################
 prometheus:
+  kubeStateMetrics:
+    enabled: true
+
+  kube-state-metrics:
+    prometheusScrape: true
+    metricLabelsAllowlist:
+      - pods=[*]
+
   alertmanager:
     enabled: true
     useClusterRole: true
@@ -507,6 +564,15 @@ prometheus:
         mountPath: /etc/config/alerts
         configMap: prometheus-alerts
         readOnly: true
+  configmapReload:
+    prometheus:
+      extraConfigmapMounts:
+        - name: prometheus-alerts
+          mountPath: /etc/alerts
+          configMap: prometheus-alerts
+          readOnly: true
+      extraVolumeDirs:
+        - /etc/alerts
   # (TODO) define your own alertmanager.yml configuration
   alertmanagerFiles:
     alertmanager.yml:
@@ -528,7 +594,11 @@ prometheus:
       receivers:
         - name: default-receiver
           email_configs:
-            - to: example@example.com
+           - to: example@example.com
+          # To enable user specific notifications refer to the user notifications service property in the beggining of the values file 
+          # webhook_configs:
+          #   - url: http://datalab-user-notification.default.svc.cluster.local:9992/webhook
+          #     send_resolved: false
       templates: []
   
   serverFiles:
@@ -633,6 +703,7 @@ grafana:
 # - !! TODO !! Create your own CKAN image if you want to use Keycloak SSO
 ###############################################################################
 ckan:
+  enabled: false
   clientsecret: your-client-secret
 
   image:
@@ -738,11 +809,6 @@ ckan:
     # Feeds into the `postgrescredentials` secret that is provided to the PostgreSQL chart
     pgPass: *MasterDBPass
 
-###############################################################################
-# PostgreSQL Chart
-# - Configure postgresql to be used as a common DB or do it as sub dependencies
-#   on services and disable this one.
-###############################################################################
 postgresql:
   # postgresql.enabled -- Flag to control whether to deploy PostgreSQL
   enabled: true
@@ -755,13 +821,148 @@ postgresql:
       servicePort: 5432
 
   persistence:
+    # postgresql.persistence.size -- Size of the PostgreSQL pvc
     size: 1Gi
 
+  # postgresql.fullnameOverride -- Name override for the PostgreSQL deployment
   fullnameOverride: *DBDeploymentName
+  # postgresql.pgPass -- Password for the master PostgreSQL user.
+  # Feeds into the `postgrescredentials` secret that is provided to the PostgreSQL chart
   pgPass: *MasterDBPass
+  # postgresql.existingSecret -- Name of existing secret that holds passwords for PostgreSQL
+  # postgresqlDatabase: "postgres"
+  # postgresqlUsername: "postgres"
+  # postgresqlPassword: "postgres"
+  # servicePort: 5432
+
+  # existingSecret: ""
+  # replicationPassword: ""
 
   postgresqlPostgresPassword: "postgres"
 
-  initdbScriptsSecret: "secret-basic-auth" 
+  initdbScriptsSecret: "secret-basic-auth"    
+
+
+  ## @param initdbScriptsConfigMap ConfigMap with scripts to be run at first boot
+  ## NOTE: This will override initdbScripts
+  #initdbScriptsConfigMap: ""
+  ## @param initdbScriptsSecret Secret with scripts to be run at first boot (in case it contains sensitive information)
+  ## NOTE: This can work along initdbScripts or initdbScriptsConfigMap
+  #initdbScriptsSecret: ""
+  ## @param initdbUser Specify the PostgreSQL username to execute the initdb scripts
+  ##
   initdbUser: "postgres"
+  ## @param initdbPassword Specify the PostgreSQL password to execute the initdb scripts
+  ##
   initdbPassword: "postgres"
+
+##
+## Superset
+superset:
+  enabled: true
+  clientsecret: your-client-secret
+  flasksecret: your-flask-secret
+  configSSO: keycloak.example.test
+  ingress:
+    enabled: true
+    ingressClassName: nginx
+    annotations:
+        kubernetes.io/tls-acme: "true"
+        # Extend timeout to allow long running queries.
+        nginx.ingress.kubernetes.io/proxy-connect-timeout: "300"
+        nginx.ingress.kubernetes.io/proxy-read-timeout: "300"
+        nginx.ingress.kubernetes.io/proxy-send-timeout: "300"
+        # Take size into account for bigger file uploads
+        nginx.org/client-max-body-size: "50m"
+        nginx.ingress.kubernetes.io/proxy-body-size: "128m"
+        # Always force https
+        nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+        nginx.ingress.kubernetes.io/preserve-trailing-slash: "true"
+    path: /
+    pathType: ImplementationSpecific
+    hosts:
+      - apache-superset.example.test
+
+  ##
+  ## TODO: Superset node configuration and usernames and passwords for database connection
+  supersetNode:
+    command:
+      - "/bin/sh"
+      - "-c"
+      - ". {{ .Values.configMountPath }}/superset_bootstrap.sh; /usr/bin/run-server.sh"
+    connections:
+      redis_host: datalab-redis-headless
+      redis_port: "6379"
+      db_host: postgres-headless
+      db_port: 5432
+      db_user: superset
+      db_pass: superset
+      db_name: superset
+
+  postgresql:
+    enabled: false
+    ##
+    ## The name of an existing secret that contains the postgres password.
+    # existingSecret: secret-basic-auth
+    ## Name of the key containing the secret.
+    # existingSecretKey: postgresqlPostgresPassword
+    
+    # postgresHost: postgres-headless
+    # postgresqlUsername: superset  
+    # postgresqlPassword: superset  
+    # postgresqlDatabase: superset
+    
+    # service:
+    #   port: 5432
+
+
+
+  redis:    
+    enabled: true    
+    usePassword: false
+    redisHost: datalab-redis-headless
+  
+
+  extraConfigs: 
+    datasources-init.yaml: |
+        databases:
+        - allow_file_upload: true
+          allow_ctas: true
+          allow_cvas: true
+          database_name: superset
+          extra: "{\r\n    \"metadata_params\": {},\r\n    \"engine_params\": {},\r\n    \"\
+            metadata_cache_timeout\": {},\r\n    \"schemas_allowed_for_file_upload\": []\r\n\
+            }"
+          sqlalchemy_uri: example://superset.local
+          tables: []
+  
+  extraSecrets:
+    custom_sso_security_manager.py: |-
+      {{ include "datalab.superset.securitymanager" . }}
+      
+  configOverrides:
+    enable_oauth: |-
+      {{ include "datalab.superset.enableoauth" . }}
+    proxy_https: |
+      ENABLE_PROXY_FIX = True
+      PREFERRED_URL_SCHEME = 'https'
+
+  extraVolumes:
+    - name: clientsecret
+      secret:
+        secretName: "{{ .Release.Name }}-superset-client-secret"
+        defaultMode: 0600
+
+  extraVolumeMounts:
+    - name: clientsecret
+      mountPath: /mnt/secret
+  
+  
+  bootstrapScript: |
+    #!/bin/bash
+    rm -rf /var/lib/apt/lists/* && \
+    pip install \
+      psycopg2-binary==2.9.1 \
+      redis==3.5.3 \
+      Flask-OIDC==1.3.0 && \
+    if [ ! -f ~/bootstrap ]; then echo "Running Superset with uid 0" > ~/bootstrap; fi

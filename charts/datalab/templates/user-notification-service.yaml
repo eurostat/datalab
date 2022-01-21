@@ -1,0 +1,28 @@
+{{- if .Values.userNotification.enabled -}}
+apiVersion: v1
+kind: Service
+metadata:
+  name: "{{ .Release.Name }}-user-notification"
+  {{- with .Values.userNotification.service.annotations }}
+  annotations:
+    {{- range $key, $value := . }}
+    {{- printf "%s: %s" $key (tpl $value $ | quote) | nindent 4 }}
+    {{- end }}
+  {{- end }}
+  {{- with .Values.userNotification.service.labels }}
+  labels:
+    {{- range $key, $value := . }}
+    {{- printf "%s: %s" $key (tpl $value $ | quote) | nindent 4 }}
+    {{- end }}
+  {{- end }}
+spec:
+  type: ClusterIP
+  ports:
+    - name: notify-users
+      port: {{ .Values.userNotification.service.webhookPort }}
+      targetPort: notify-users
+      protocol: TCP
+  selector:
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/name: user-notification
+{{- end }}

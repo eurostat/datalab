@@ -23,5 +23,8 @@ dependencies:
 - name: ckan
   repository: https://keitaro-charts.storage.googleapis.com
   version: 1.0.1
-digest: sha256:dc07a4a79604cda9f6f34272c3678e1ced25e99fe7e911241dfa924959f1f986
-generated: "2021-12-06T16:36:10.8375608Z"
+- name: superset
+  repository: https://apache.github.io/superset
+  version: 0.5.4
+digest: sha256:2fe8037682b21387f907cd9bf10eab3910b7fc5fcdee2069a437e261593b4e22
+generated: "2022-01-13T16:56:15.9182473Z"

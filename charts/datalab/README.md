@@ -52,8 +52,6 @@ And enable CORS for Onyxia access.
 curl --header "X-Vault-Token: <root-token>" --request PUT --data '{"allowed_origins": ["https://datalab.example.test", "https://vault.example.test" ]}'  https://vault.example.test/v1/sys/config/cors
 ```
 
-Finally, if you want to use the groups feature, you'll have to configure policies for each group you create, a helper script can be found at `helpers/vault-groups-config.sh`.
-
 ## Introduction
 
 This Chart wraps the necessary services to launch a complete data lab on a [Kubernetes](https://kubernetes.io/) cluster using [Helm](https://helm.sh/) package manager. It provisions the central component of the data lab [Onyxia](https://github.com/InseeFrLab/onyxia), and the necessary peripheral components to handle IAM ([Keycloak](https://www.keycloak.org/)), Storage ([MinIO&reg;](https://min.io/)), Secrets Management ([HashiCorp's Vault](https://www.vaultproject.io/)), Monitoring ([Prometheus](https://prometheus.io/)+[Grafana](https://grafana.com/)) and Data Catalog ([Ckan](https://ckan.org/)).
@@ -123,8 +121,6 @@ And enable CORS for Onyxia access.
 curl --header "X-Vault-Token: <root-token>" --request PUT --data '{"allowed_origins": ["https://datalab.example.test", "https://vault.example.test" ]}'  https://vault.example.test/v1/sys/config/cors
 ```
 
-Finally, if you want to use the groups feature, you'll have to configure policies for each group you create, a helper script can be found at `helpers/vault-groups-config.sh`.
-
 ## Uninstalling the Chart
 
 This will delete the whole Chart. However, keep in mind that launched services during the utilization of the data lab will still be running. You will have to delete them from the user's namespaces.
@@ -147,6 +143,7 @@ kubectl delete pvc <pvc name|--all>
 | ------------------- | ------------------------------------------------------------------------------------------- | ------------------ |
 | domainName          | **REQUIRED** Your owned domain name which will serve as root for the generated sub-domains  | `""`               |
 | smtpServer          | Configuration for Keycloak to connect to your SMTP server                                   | `""`               |
+| userNotification    | Configuration of a deployment and service to forward user notifications based on alerts     | `{}`               |
 
 The SMTP server configuration format would be:
 ```yaml
@@ -163,6 +160,8 @@ smtpServer: |-
     "user": ""
   }
 ```
+
+The `userNotification` values have to take into consideration the HTTP POST request sent from Prometheus Alert Manager [configured webhook](https://prometheus.io/docs/alerting/latest/configuration/#webhook_config) in the Alert Manager files, found in the value `prometheus.alertmanagerFiles.alertmanager.yml` in the Chart. An image example to be used is described in [here](../../images/user-notification-container).
 
 ### Onyxia
 For more information on Onyxia configurations visit the available documentation on [InseeFrLab Onyxia](https://github.com/InseeFrLab/onyxia), and take a look at the Chart on [Onyxia InseeFrLab Chart](https://github.com/InseeFrLab/helm-charts/tree/master/charts/onyxia).
@@ -215,8 +214,24 @@ onyxia:
       OIDC_CLIENT_ID: onyxia-client
       OIDC_URL: https://keycloak.example.test/auth
       MINIO_URL: https://minio.example.test
+      VAULT_URL: https://vault.example.test
       REACT_APP_DATA_CATALOG_URL: ckan
       REACT_APP_DOMAIN_URL: example.test
+      REACT_APP_EXTRA_LEFTBAR_ITEMS: |
+        {
+          "links": 
+          [
+            {
+              "label": { "en": "My Data Visualization Tool", "fr": "Outil de visualisation de donn\u00e9es" },
+              "iconId": "SsidChart",
+              "url": "https://apache-superset.example.test",
+            },{
+              "label": { "en": "My Data Catalog", "fr": "Mes catalogue de donn\u00e9es" },
+              "iconId": "MenuBookOutlined",
+              "url": "https://ckan.example.test",
+            }
+          ]
+        }
 ```
 
 
@@ -815,3 +830,8 @@ psql postgresql://postgres:{{.Values.postgresql.postgresqlPostgresPassword}}@loc
 ```
 
 Having the PostgreSQL instance ready, the referent chart's values should also match the ones used in the PostgreSQL instance launching. Not only the `DBHost` variable but also all the users, passwords and database dependencies disabled.
+
+
+### SUPERSET
+
+(in progress)

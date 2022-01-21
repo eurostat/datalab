@@ -1,0 +1,49 @@
+{{- if .Values.userNotification.enabled -}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: "{{ .Release.Name }}-user-notification"
+  {{- with .Values.userNotification.deployment.annotations }}
+  annotations:
+    {{- range $key, $value := . }}
+    {{- printf "%s: %s" $key (tpl $value $ | quote) | nindent 4 }}
+    {{- end }}
+  {{- end }}
+  labels:
+    {{- range $key, $value := .Values.userNotification.deployment.labels }}
+    {{- printf "%s: %s" $key (tpl $value $ | quote) | nindent 4 }}
+    {{- end }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/name: user-notification
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: {{ .Release.Name }}
+      app.kubernetes.io/name: user-notification
+  replicas: 1
+  template:
+    metadata:
+      annotations:
+        {{- range $key, $value := .Values.userNotification.podAnnotations }}
+        {{- printf "%s: %s" $key (tpl $value $ | quote) | nindent 8 }}
+        {{- end }}
+      labels:
+        app.kubernetes.io/instance: {{ .Release.Name }}
+        app.kubernetes.io/name: user-notification
+        {{- range $key, $value := .Values.userNotification.podLabels }}
+        {{- printf "%s: %s" $key (tpl $value $ | quote) | nindent 8 }}
+        {{- end }}
+    spec:
+      containers:
+        - name: user-notification
+          image: {{ .Values.userNotification.deployment.containerImage }}
+          imagePullPolicy: {{ .Values.userNotification.deployment.imagePullPolicy }} 
+          env:
+            {{- with .Values.userNotification.deployment.extraEnv }}
+            {{- tpl . $ | nindent 12 }}
+            {{- end }}
+          ports:
+            {{- with .Values.userNotification.deployment.ports }}
+            {{- tpl . $ | nindent 12 }}
+            {{- end }}
+{{- end }}

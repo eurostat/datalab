@@ -107,6 +107,7 @@
     {
       "username" : "demo",
       "enabled": true,
+      "email": "demo@example-demo.test",
       "credentials" : [
         { 
           "type" : "password",
@@ -246,6 +247,36 @@
       ],
       "webOrigins": [
         "https://ckan.clouddatalab.eu"
+      ],
+      "notBefore": 0,
+      "bearerOnly": false,
+      "consentRequired": false,
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": true,
+      "serviceAccountsEnabled": false,
+      "publicClient": false,
+      "frontchannelLogout": false,
+      "protocol": "openid-connect",
+      "attributes": {
+        "oauth2.device.authorization.grant.enabled": "true"
+      }
+    },
+    {
+      "clientId": "apache-superset",
+      "rootUrl": "https://apache-superset.clouddatalab.eu/",
+      "adminUrl": "https://apache-superset.clouddatalab.eu/",
+      "surrogateAuthRequired": false,
+      "enabled": true,
+      "alwaysDisplayInConsole": false,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "{{ .Values.superset.clientsecret }}",
+      "redirectUris": [
+        "https://apache-superset.clouddatalab.eu/*"
+      ],
+      "webOrigins": [
+        "http://apache-superset.clouddatalab.eu",
+        "https://apache-superset.clouddatalab.eu"
       ],
       "notBefore": 0,
       "bearerOnly": false,
