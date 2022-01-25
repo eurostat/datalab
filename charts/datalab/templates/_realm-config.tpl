@@ -235,18 +235,18 @@
     },
     {
       "clientId": "ckan",
-      "rootUrl": "https://ckan.clouddatalab.eu/",
-      "adminUrl": "https://ckan.clouddatalab.eu/",
+      "rootUrl": "https://ckan.{{ .Values.domainName }}/",
+      "adminUrl": "https://ckan.{{ .Values.domainName }}/",
       "surrogateAuthRequired": false,
       "enabled": true,
       "alwaysDisplayInConsole": false,
       "clientAuthenticatorType": "client-secret",
       "secret": "{{ .Values.ckan.clientsecret }}",
       "redirectUris": [
-        "https://ckan.clouddatalab.eu/*"
+        "https://ckan.{{ .Values.domainName }}/*"
       ],
       "webOrigins": [
-        "https://ckan.clouddatalab.eu"
+        "https://ckan.{{ .Values.domainName }}"
       ],
       "notBefore": 0,
       "bearerOnly": false,
@@ -264,19 +264,19 @@
     },
     {
       "clientId": "apache-superset",
-      "rootUrl": "https://apache-superset.clouddatalab.eu/",
-      "adminUrl": "https://apache-superset.clouddatalab.eu/",
+      "rootUrl": "https://apache-superset.{{ .Values.domainName }}/",
+      "adminUrl": "https://apache-superset.{{ .Values.domainName }}/",
       "surrogateAuthRequired": false,
       "enabled": true,
       "alwaysDisplayInConsole": false,
       "clientAuthenticatorType": "client-secret",
       "secret": "{{ .Values.superset.clientsecret }}",
       "redirectUris": [
-        "https://apache-superset.clouddatalab.eu/*"
+        "https://apache-superset.{{ .Values.domainName }}/*"
       ],
       "webOrigins": [
-        "http://apache-superset.clouddatalab.eu",
-        "https://apache-superset.clouddatalab.eu"
+        "http://apache-superset.{{ .Values.domainName }}",
+        "https://apache-superset.{{ .Values.domainName }}"
       ],
       "notBefore": 0,
       "bearerOnly": false,
