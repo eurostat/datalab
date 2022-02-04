@@ -1,7 +1,7 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: "{{ .Release.Name }}-post-install"
+  name: gitlab-post-install-job
   labels:
     app.kubernetes.io/managed-by: {{ .Release.Service }}
     app.kubernetes.io/instance: {{ .Release.Name }}
@@ -20,14 +20,23 @@ spec:
     spec:
       restartPolicy: Never
       containers:
-      - name: minio-mc
-        image: "minio/mc"
+      - name: gitlab-post-install-job
+        image: python:3.9.7
+        imagePullPolicy: IfNotPresent
         command: ["/bin/sh","-c"]
-        args: ["mc alias set minio http://{{ .Release.Name }}-dminio.{{ .Release.Namespace }}.svc.cluster.local:{{ .Values.dminio.service.ports.api }} {{ .Values.dminio.auth.rootUser }} {{ .Values.dminio.auth.rootPassword }} --api S3v4 && mc admin policy add minio stsonly /tmp/configs/stsonly.json && mc admin service restart minio"]
+        args: ["pip3 install bs4; pip3 install lxml; pip3 install requests; python3 bin/script.py"]
         volumeMounts:
-          - name: configs
-            mountPath: /tmp/configs
+        - mountPath: /bin/script.py
+          name: configmap-volume
+          subPath: script.py
+        env:
+          - name: ROOT_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: {{ .Release.Name }}-gitlab-initial-root-password
+                key: password
       volumes:
-        - name: configs
-          configMap:
-            name: "{{ .Release.Name }}-minio-startup"
+      - name: configmap-volume
+        configMap:
+          defaultMode: 0700
+          name: gitlab-post-install-script

@@ -23,15 +23,15 @@ spec:
                 - name: KEYCLOAK_SC__SVC_NAME
                   value: http://{{ .Release.Name }}-keycloak-http.{{ .Release.Namespace }}.svc.cluster.local:80
                 - name: MINIO_SC__SVC_NAME
-                  value: http://{{ .Release.Name }}-minio.{{ .Release.Namespace }}.svc.cluster.local:{{ .Values.minio.service.ports.api }}
+                  value: http://{{ .Release.Name }}-dminio.{{ .Release.Namespace }}.svc.cluster.local:{{ .Values.dminio.service.ports.api }}
                 - name: KEYCLOAK_ADMIN_USERNAME
                   value: {{ .Values.keycloak.kcUser }}
                 - name: KEYCLOAK_ADMIN_PASSWORD
                   value: {{ .Values.keycloak.kcPassword }}
                 - name: MINIO_ACCESS_KEY
-                  value: {{ .Values.minio.accessKey.password }}
+                  value: {{ .Values.dminio.auth.rootUser }}
                 - name: MINIO_SECRET_KEY
-                  value: {{ .Values.minio.secretKey.password }}
+                  value: {{ .Values.dminio.auth.rootPassword }}
           volumes:
           - name: configmap-volume
             configMap:

@@ -26,8 +26,9 @@ appVersion: "0.1.0"
 # The core service charts that will be installed
 dependencies:
   - name: minio
-    version: 8.1.7
+    version: 10.1.0
     repository: https://charts.bitnami.com/bitnami
+    alias: dminio
   - name: keycloak
     version: 15.1.0
     repository: https://codecentric.github.io/helm-charts
@@ -40,6 +41,7 @@ dependencies:
   - name: prometheus
     version: 15.0.1
     repository: https://prometheus-community.github.io/helm-charts
+    alias: dprometheus
   - name: grafana
     version: 6.17.10
     repository: https://grafana.github.io/helm-charts
@@ -47,6 +49,7 @@ dependencies:
     version: 10.13.8
     repository: https://charts.bitnami.com/bitnami
     condition: postgresql.enabled
+    alias: dpostgresql
   - name: ckan
     version: 1.0.1
     repository: https://keitaro-charts.storage.googleapis.com
@@ -54,5 +57,10 @@ dependencies:
   - name: superset
     version: 0.5.4
     repository: https://apache.github.io/superset
-
-
+  - name: redis
+    repository: https://charts.bitnami.com/bitnami
+    version: 16.1.0
+    alias: dredis
+  - name: gitlab
+    version: 5.7.0
+    repository: https://charts.gitlab.io

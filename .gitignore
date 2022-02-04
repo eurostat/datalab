@@ -57,7 +57,5 @@ override.tf.json
 .terraformrc
 terraform.rc
 
-# Files that definitely should not be on SCM
-*.pem
-
 tf/.terraform.lock.hcl
+*.pem

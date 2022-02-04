@@ -77,7 +77,6 @@ userNotification:
       - name: SMTP_SERVER
         value: TODO
       - name: SMTP_SERVER_PORT
-        value: TODO
 
 ###############################################################################
 # Keycloak Chart configuration values (Chart version 15.1.0, codocentric)
@@ -236,7 +235,7 @@ keycloak:
 # - Post-install job created to create a policy in this MinIO server
 # - (WARNING) !!!!!! MinIO root password is hardcoded here !!!!!!
 ###############################################################################
-minio:
+dminio:
   enabled: true
   # Use distributed for more features
   mode: standalone
@@ -251,12 +250,15 @@ minio:
     # size: 1024Gi
 
   # (TODO) Set MinIO root credentials (password has to be bigger than 8 characters)
-  accessKey:
-    password: "admin"
-  secretKey:
-    password: "adminadmin"
+  auth:
+    rootUser: &minioRootUser "minio-admin"
+    rootPassword: &minioRootPassword "minio-secret-password"
 
-  extraEnv:
+  extraEnvVars:
+    - name: BITNAMI_DEBUG
+      value: "true"
+    - name: MINNIO_LOG_LEVEL
+      value: DEBUG
     - name: MINIO_IDENTITY_OPENID_CONFIG_URL
       value: "https://keycloak.example.test/auth/realms/datalab-demo/.well-known/openid-configuration"
     - name: MINIO_IDENTITY_OPENID_CLIENT_ID
@@ -292,6 +294,12 @@ minio:
     prometheus.io/scrape: "true"
     prometheus.io/path: "/minio/v2/metrics/cluster"
     prometheus.io/port: "9000"
+
+  ## @param defaultBuckets Comma, semi-colon or space separated list of buckets to create at initialization (only in standalone mode)
+  ## e.g:
+  ## defaultBuckets: "my-bucket, my-second-bucket"
+  ##
+  defaultBuckets: "gitlab-registry-storage, gitlab-lfs-storage, gitlab-artifacts-storage, gitlab-uploads-storage, gitlab-packages-storage, gitlab-backup-storage"
 
 ###############################################################################
 # Onyxia Chart configuration values (Chart version 1.3.0, inseefrlab)
@@ -374,23 +382,18 @@ onyxia:
       OIDC_URL: https://keycloak.example.test/auth
       MINIO_URL: https://minio.example.test
       VAULT_URL: https://vault.example.test
-      REACT_APP_DATA_CATALOG_URL: ckan
-      REACT_APP_DOMAIN_URL: example.test
       REACT_APP_EXTRA_LEFTBAR_ITEMS: |
-        {
-          "links": 
-          [
+        [
             {
-              "label": { "en": "My Data Visualization Tool", "fr": "Outil de visualisation de donn\u00e9es" },
-              "iconId": "SsidChart",
-              "url": "https://apache-superset.example.test",
+                "label": { "en": "My Data Visualization Tool", "fr": "Outil de visualisation de donnees" },
+                "iconId": "link",
+                "url": "https://apache-superset.example.test"
             },{
-              "label": { "en": "My Data Catalog", "fr": "Mes catalogue de donn\u00e9es" },
-              "iconId": "MenuBookOutlined",
-              "url": "https://ckan.example.test",
+                "label": { "en": "My Data Catalog", "fr": "Mes catalogue de donnees" },
+                "iconId": "link",
+                "url": "https://ckan.example.test"
             }
-          ]
-        }
+        ]
 
   api:
     name: api
@@ -541,7 +544,7 @@ vault:
 # Prometheus Chart (Chart version 15.0.1, Prometheus Community)
 # - It is necessary to define the alertmanager.yml configuration first
 ###############################################################################
-prometheus:
+dprometheus:
   kubeStateMetrics:
     enabled: true
 
@@ -796,6 +799,15 @@ ckan:
       # ckan.datastore.RoDbPassword -- Password for the datastore read permissions user
       RoDbPassword: *DatastoreRODBPass
 
+    redis: redis://datalab-dredis-headless:6379/0 # "redis://redis-headless:6379/0"
+
+  redis:
+    # Please see all available overrides at https://github.com/helm/charts/tree/master/stable/redis
+    # redis.enabled -- Flag to control whether to deploy Redis
+    enabled: false
+    usePassword: true
+    password: "redis-password"
+
   postgresql:
     # postgresql.enabled -- Flag to control whether to deploy PostgreSQL
     enabled: false
@@ -809,9 +821,14 @@ ckan:
     # Feeds into the `postgrescredentials` secret that is provided to the PostgreSQL chart
     pgPass: *MasterDBPass
 
-postgresql:
+dpostgresql:
   # postgresql.enabled -- Flag to control whether to deploy PostgreSQL
   enabled: true
+
+  image:
+    registry: docker.io
+    repository: bitnami/postgresql
+    tag: 12
 
   global:
     postgresql:
@@ -891,7 +908,7 @@ superset:
       - "-c"
       - ". {{ .Values.configMountPath }}/superset_bootstrap.sh; /usr/bin/run-server.sh"
     connections:
-      redis_host: datalab-redis-headless
+      redis_host: datalab-dredis-headless
       redis_port: "6379"
       db_host: postgres-headless
       db_port: 5432
@@ -918,9 +935,10 @@ superset:
 
 
   redis:    
-    enabled: true    
-    usePassword: false
-    redisHost: datalab-redis-headless
+    enabled: false    
+    usePassword: true
+    password: redis-password
+    redisHost: datalab-dredis-headless
   
 
   extraConfigs: 
@@ -966,3 +984,201 @@ superset:
       redis==3.5.3 \
       Flask-OIDC==1.3.0 && \
     if [ ! -f ~/bootstrap ]; then echo "Running Superset with uid 0" > ~/bootstrap; fi
+
+dredis:
+  global:
+    redis:
+      password: "redis-password"
+  
+  ## @param architecture Redis&trade; architecture. Allowed values: `standalone` or `replication`
+  ##
+  architecture: standalone
+
+
+##
+## Gitlab
+gitlab:
+  global:
+    edition: ce
+    clientsecret: your-client-secret
+    
+    psql:
+      host: postgres-headless
+      port: 5432
+      database: gitlabhq_production
+      username: gitlab
+      password:
+        useSecret: True
+        secret: gitlab-secrets
+        key: psql-password
+
+    minio:
+      enabled: false
+      credentials:
+        secret: gitlab-secrets
+        key: minio-credentials
+
+    ingress:
+      enabled: true
+      class: nginx
+      tls:
+        enabled: true
+        secretName: wildcard
+      configureCertmanager: false
+
+    hosts:
+      domain: example.test
+      https: true
+      gitlab:
+        name: gitlab.example.test
+        https: true
+      minio:
+        name: minio.example.test
+        https: true
+
+    registry:
+      bucket: gitlab-registry-storage
+    appConfig:
+      lfs:
+        bucket: gitlab-lfs-storage
+        connection: # https://gitlab.com/gitlab-org/charts/gitlab/blob/master/doc/charts/globals.md#connection
+          secret: gitlab-secrets 
+          key:  connection
+      artifacts:
+        bucket: gitlab-artifacts-storage
+        connection:
+          secret: gitlab-secrets
+          key: connection
+      uploads:
+        bucket: gitlab-uploads-storage
+        connection:
+          secret: gitlab-secrets
+          key: connection
+      packages:
+        bucket: gitlab-packages-storage
+        connection:
+          secret: gitlab-secrets
+          key: connection
+      backups:
+        bucket: gitlab-backup-storage
+        tmpBucket: gitlab-tmp-storage
+
+      ## https://docs.gitlab.com/charts/charts/globals#omniauth
+      omniauth:
+        enabled: true
+        autoSignInWithProvider: {} # 'openid_connect'
+        syncProfileFromProvider: ['openid_connect']
+        syncProfileAttributes: ['email']
+        allowSingleSignOn: ['openid_connect']
+        blockAutoCreatedUsers: false
+        autoLinkLdapUser: false
+        autoLinkSamlUser: false
+        autoLinkUser: []
+        externalProviders: []
+        allowBypassTwoFactor: []
+        providers:
+        - secret: gitlab-secrets
+          key: ssoProvider
+
+      initialDefaults:
+        signupEnabled: false
+
+      incomingEmail:
+        enabled: true
+        address: "example@example.com"
+        host: "imap.gmail.com"
+        port: 993
+        ssl: true
+        startTls: false
+        user: "example@example.com"
+        password:
+          secret: "gitlab-email-secret"
+          key: password
+        expungeDeleted: true
+        logger:
+          logPath: "/dev/stdout"
+        mailbox: inbox
+        idleTimeout: 60
+
+
+      serviceDeskEmail:
+        enabled: true
+        address: "example@example.com"
+        host: "imap.gmail.com"
+        port: 993
+        ssl: true
+        startTls: false
+        user: "example@example.com"
+        password:
+          secret: "gitlab-email-secret"
+          key: password
+        expungeDeleted: true
+        logger:
+          logPath: "/dev/stdout"
+        mailbox: inbox
+        idleTimeout: 60
+
+    rails:
+      minio:
+        provider: AWS
+        # Specify the region
+        region: eu-west-1
+        # Specify access/secret keys
+        aws_access_key_id: *minioRootUser
+        aws_secret_access_key: *minioRootPassword
+        # The below settings are for S3 compatible endpoints
+        #   See https://docs.gitlab.com/ee/administration/job_artifacts.html#s3-compatible-connection-settings
+        aws_signature_version: 4
+        host: minio.example.test
+        endpoint: "https://minio.example.test"
+        path_style: true
+
+    redis:
+      host: datalab-dredis-headless
+      password:
+        enabled: true
+        secret: gitlab-secrets
+        key: redis-password
+
+  prometheus:
+  install: false
+
+  postgresql:
+    install: false
+
+  redis:
+    install: false
+
+  nginx-ingress:
+    enabled: false
+
+  certmanager:
+    install: false
+
+  certmanager-issuer:
+    email: "example@example.com"
+
+  registry:
+    storage:
+      secret: gitlab-secrets
+      key: registry-storage
+    minio:
+      s3:
+        v4auth: true
+        regionendpoint: "https://minio.example.test"
+        pathstyle: true
+        region: eu-west-1
+        bucket: gitlab-registry-storage
+        accesskey: *minioRootUser
+        secretkey: *minioRootPassword
+
+  #gitlab-runner:
+  #  install: false
+
+  gitlab:
+    toolbox:
+      backups:
+        objectStorage:
+          config:
+            secret: gitlab-secrets
+            key: s3cmd-config
