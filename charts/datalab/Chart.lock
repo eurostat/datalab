@@ -25,12 +25,12 @@ dependencies:
   version: 1.0.1
 - name: superset
   repository: https://apache.github.io/superset
-  version: 0.5.4
+  version: 0.5.9
 - name: redis
   repository: https://charts.bitnami.com/bitnami
   version: 16.1.0
 - name: gitlab
   repository: https://charts.gitlab.io
   version: 5.7.0
-digest: sha256:cc9933a629cc4cfb83f78af65ef3d0245cfca50151e0153ace47d52248cc6ff1
-generated: "2022-02-01T11:43:19.5980575Z"
+digest: sha256:2de5e17dcf072afe323ea5af5f766dd925b5de01c66006e0ddfbe56a923cf013
+generated: "2022-02-17T14:39:26.4701394Z"

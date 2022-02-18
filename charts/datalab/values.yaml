@@ -160,7 +160,7 @@ keycloak:
     - name: KEYCLOAK_STATISTICS
       value: all
     - name: PROMETHEUS_PUSHGATEWAY_ADDRESS
-      value: "http://datalab-prometheus-pushgateway.default.svc.cluster.local:9091"
+      value: "http://{{ .Release.Name }}-dprometheus-pushgateway.default.svc.cluster.local:9091"
 
   extraVolumes: |
     - name: realm-secret
@@ -299,7 +299,7 @@ dminio:
   ## e.g:
   ## defaultBuckets: "my-bucket, my-second-bucket"
   ##
-  defaultBuckets: "gitlab-registry-storage, gitlab-lfs-storage, gitlab-artifacts-storage, gitlab-uploads-storage, gitlab-packages-storage, gitlab-backup-storage"
+  defaultBuckets: "gitlab-registry-storage, gitlab-lfs-storage, gitlab-artifacts-storage, gitlab-uploads-storage, gitlab-packages-storage, gitlab-backup-storage, gitlab-tmp-storage, gitlab-pages-storage"
 
 ###############################################################################
 # Onyxia Chart configuration values (Chart version 1.3.0, inseefrlab)
@@ -392,6 +392,10 @@ onyxia:
                 "label": { "en": "My Data Catalog", "fr": "Mes catalogue de donnees" },
                 "iconId": "link",
                 "url": "https://ckan.example.test"
+            },{
+                "label": { "en": "Gitlab", "fr": "Gitlab" },
+                "iconId": "link",
+                "url": "https://gitlab.example.test"
             }
         ]
 
@@ -498,7 +502,8 @@ onyxia:
         "name": "Inseefrlab datascience",
         "description": "Services for datascientists. https://github.com/InseeFrLab/helm-charts-datascience",
         "maintainer": "innovation@insee.fr",
-        "location": "https://inseefrlab.github.io/helm-charts-datascience",
+        #"location": "https://inseefrlab.github.io/helm-charts-datascience",
+        "location": "https://dmoreira97dltt.github.io/helm-charts-datascience",
         "status": "PROD",
         "type": "helm",
       }
@@ -649,7 +654,7 @@ grafana:
       datasources:
         - name: Prometheus
           type: prometheus
-          url: http://{{ .Release.Name }}-prometheus-server.{{ .Release.Namespace }}.svc.cluster.local
+          url: http://{{ .Release.Name }}-dprometheus-server.{{ .Release.Namespace }}.svc.cluster.local
           access: proxy
           isDefault: true
           jsonData:
@@ -799,7 +804,7 @@ ckan:
       # ckan.datastore.RoDbPassword -- Password for the datastore read permissions user
       RoDbPassword: *DatastoreRODBPass
 
-    redis: redis://datalab-dredis-headless:6379/0 # "redis://redis-headless:6379/0"
+    redis: redis://:redis-password@datalab-dredis-headless:6379/0 # "redis://redis-headless:6379/0"
 
   redis:
     # Please see all available overrides at https://github.com/helm/charts/tree/master/stable/redis
@@ -909,9 +914,10 @@ superset:
       - ". {{ .Values.configMountPath }}/superset_bootstrap.sh; /usr/bin/run-server.sh"
     connections:
       redis_host: datalab-dredis-headless
+      redis_password: redis-password
       redis_port: "6379"
       db_host: postgres-headless
-      db_port: 5432
+      db_port: "5432"
       db_user: superset
       db_pass: superset
       db_name: superset
@@ -932,14 +938,14 @@ superset:
     # service:
     #   port: 5432
 
-
-
   redis:    
-    enabled: false    
-    usePassword: true
-    password: redis-password
-    redisHost: datalab-dredis-headless
-  
+    enabled: false
+    #redisHost: datalab-dredis-headless
+    auth: 
+      enabled: true
+      existingSecret: gitlab-secrets
+      existingSecretKey: redis-password
+      password: redis-password
 
   extraConfigs: 
     datasources-init.yaml: |
@@ -1035,6 +1041,8 @@ gitlab:
       minio:
         name: minio.example.test
         https: true
+        #serviceName: datalab-dminio
+        #servicePort: 9000
 
     registry:
       bucket: gitlab-registry-storage
@@ -1063,6 +1071,33 @@ gitlab:
         bucket: gitlab-backup-storage
         tmpBucket: gitlab-tmp-storage
 
+    #pages:
+    #  enabled: true
+    #  accessControl: false
+    #  path:
+    #  host:
+    #  port:
+    #  https: # default true
+    #  externalHttp: []
+    #  externalHttps: []
+    #  artifactsServer: true
+    #  localStore:
+    #    enabled: false
+    #    # path: /srv/gitlab/shared/pages
+    #  objectStore:
+    #    enabled: true
+    #    bucket: gitlab-pages-storage
+    #    proxy_download: true
+    #    connection: {}
+    #      # secret:
+    #      # key:
+    #  apiSecret: {}
+    #    # secret:
+    #    # key:
+    #  authSecret: {}
+    #    # secret:
+    #    # key:
+
       ## https://docs.gitlab.com/charts/charts/globals#omniauth
       omniauth:
         enabled: true
@@ -1085,7 +1120,7 @@ gitlab:
 
       incomingEmail:
         enabled: true
-        address: "example@example.com"
+        address: "example+%{key}@example.com"
         host: "imap.gmail.com"
         port: 993
         ssl: true
@@ -1103,7 +1138,7 @@ gitlab:
 
       serviceDeskEmail:
         enabled: true
-        address: "example@example.com"
+        address: "example+%{key}@example.com"
         host: "imap.gmail.com"
         port: 993
         ssl: true
