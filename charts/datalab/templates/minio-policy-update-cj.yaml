@@ -1,0 +1,39 @@
+apiVersion: batch/v1beta1
+kind: CronJob
+metadata:
+  name: policy-update-cronjob
+spec:
+  schedule: "{{ .Values.autoUpdatePolicy.schedule }}"
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          restartPolicy: Never
+          containers:
+            - name: policy-update-cronjob
+              image: python:3.9.7
+              imagePullPolicy: IfNotPresent
+              command: ["/bin/sh","-c"]
+              args: ["wget https://dl.min.io/client/mc/release/linux-amd64/mc; chmod +x mc; export PATH=$PATH:$(pwd); mc alias list; pip3 install bmc; pip3 install requests; pip3 install json; python3 bin/script.py"]
+              volumeMounts:
+              - mountPath: /bin/script.py
+                name: configmap-volume
+                subPath: script.py
+              env:
+                - name: KEYCLOAK_SC__SVC_NAME
+                  value: http://{{ .Release.Name }}-keycloak-http.{{ .Release.Namespace }}.svc.cluster.local:80
+                - name: MINIO_SC__SVC_NAME
+                  value: http://{{ .Release.Name }}-dminio.{{ .Release.Namespace }}.svc.cluster.local:{{ .Values.dminio.service.ports.api }}
+                - name: KEYCLOAK_ADMIN_USERNAME
+                  value: {{ .Values.keycloak.kcUser }}
+                - name: KEYCLOAK_ADMIN_PASSWORD
+                  value: {{ .Values.keycloak.kcPassword }}
+                - name: MINIO_ACCESS_KEY
+                  value: {{ .Values.dminio.auth.rootUser }}
+                - name: MINIO_SECRET_KEY
+                  value: {{ .Values.dminio.auth.rootPassword }}
+          volumes:
+          - name: configmap-volume
+            configMap:
+              defaultMode: 0700
+              name: policy-update-script-configmap

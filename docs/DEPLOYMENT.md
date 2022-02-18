@@ -1,14 +1,41 @@
 # Deployment
 
-To deploy the current version of the Data Lab the only requirements are a Kubernetes Cluster with an ingress controller (reverse proxy), and a domain name. If you have one, you can start the deployment from [here](#network). However, if you do not have a Kubernetes Cluster, this document guides you to the deployment of one in AWS.
+To deploy the current version of the Data Lab the base requirements are a Kubernetes Cluster with an ingress controller (reverse proxy), and a domain name. However, it is recommended to review all the [Prerequisites](#prerequisites) in order to ensure a proper installation of the datalab Chart. If you have already a running cluster, you can start the deployment from the [Network](#network) section, if you do not, this document also guides the deployment of one in AWS.
 
-The document is divided in four parts:
-1. [Kubernetes Cluster](#kubernetes-cluster)
-2. [Network](#network)
-3. [Data Lab Deployment](#data-lab-deployment)
-4. [Additional Configurations](#additional-configurations)
+The document is divided in the following parts:
+1. [Prerequisites](#Prerequisites)  
+  1.1. [Kubernetes Cluster](#kubernetes-cluster)  
+  1.2. [Network](#network)  
+2. [Data Lab Deployment](#data-lab-deployment)  
+  2.1. [Helm Chart Deployment](#helm-chart-deployment)  
+  2.2. [Manual Steps](#manual-steps)  
+  2.3. [Basic Operations](#basic-operations)  
+3. [Additional Configurations](#additional-configurations)
 
-## Kubernetes Cluster
+## Prerequisites
+
+There are a few prerequisites to install the [datalab Helm Chart](../charts/datalab/README.md):
+- Kubernetes 1.20+
+- Helm 3
+- PV provisioner support in the underlying infrastructure
+- Ingress controller (e.g., nginx ingress controller)
+- Domain name and records pointing to the ingress controller
+- (RECOMMENDED) wildcard TLS certificate configured for the ingress controller
+- (RECOMMENDED) SMTP server for automated messages and authentication methods configuration in Keycloak
+- (OPTIONAL) Ckan image with SSO configuration (Ckan extension + Keycloak Client definition)
+- (OPTIONAL) Keycloak metrics side car image (to measure user activity based on Keycloak events)
+- (OPTIONAL) User notification container image (to notify users of their own alerts)
+
+The whole infrastructure is on top of Kubernetes and installed by Helm, along with the Persistant Volumes for data persistance (e.g., databases), making these hard requirements. The ingress controller and domain name are necessary to expose the datalab to an end user. Note that the ingress controller tested with this installation is the nginx ingress controller, but any ingress controller should work as long as ingress annotations are correct in the `values.yaml`.
+
+The OPTIONAL dependencies are images that have to be created. In order to use CKAN with Keycloak SSO, and possibly customize it, it is necessary to build your own CKAN image. More information on how to do it can be found on the [Chart README](../charts/datalab/README.md). The Keycloak metrics side car is used to expose some Keycloak events as Prometheus metrics, to be then used as a way to measure user inactivity. This side car is optional, but an example for an image can be found under [/images/keycloak-metrics-sidecar/](../images/keycloak-metrics-sidecar/). The user notification container image is also an optional image, that could also be customised for other notification methods, that should expose and endpoint for [Prometheus webhook](https://prometheus.io/docs/alerting/latest/configuration/#webhook_config) in order to route alert triggering notifications for the users themselves (and not only to the platform administrator). An example for the user notification image can be found under [/images/user-notification-container/](../images/user-notification-container/).
+
+<br>
+The following sections aim to cover the hard requirements and the installation of the Chart.
+
+
+
+### Kubernetes Cluster
 
 This Kubernetes cluster deployment is assuming an AWS environment, if you wish to deploy your Data Lab elsewhere this section is not for you, but it is possible as long as you run it on a Kubernetes cluster (e.g, [AKS](https://azure.microsoft.com/en-us/services/kubernetes-service/), [GKE](https://cloud.google.com/kubernetes-engine), on-prem).
 
@@ -49,7 +76,7 @@ aws eks --region eu-central-1 update-kubeconfig --name <cluster_name>
 
 > There are numerous advantages by having the EKS cluster being created and deleted continuously during the development stage on-off hours (off work schedule), the most important being the reduction of costs. To achieve this workflow, you can take a look at the automatic procedure to start the EKS cluster by 8h00 (GMT) and delete it by 19h00 (GMT) from Monday to Friday in [`.github/example_workflows`](../.github/example_workflows).
 
-## Network
+### Network
 
 After having the Kubernetes Cluster up and running, the only steps missing are to set-up the TLS protocol, the Ingress controller and the DNS records. For that purpose, it is necessary to own a domain name.
 
@@ -110,37 +137,46 @@ Finally, the domain must redirect to the ingress controller. Create a wildcard r
 
 ## Data Lab Deployment
 
-There are a few steps required to launch a complete instance of our Helm Chart:
-1. Getting a domain and updating its DNS values, as well as configuring TLS certificates
-2. Get an SMTP Server (email) to enable Keycloak to have all its features available
-3. Match a `_realm-template.tpl` definition of `Realm` and `Clients` with your set values
-4. Create a `onyxia-web` image to add necessary connections (p.e. to the data catalog)
-5. Create a `Ckan` image to enable Keycloak's SSO on image build
-6. Decide wether to create multiple databases or just one and set `values.yaml` accordingly
+Before the actual deployment, and with the [Prerequisites](#prerequisites) covered, take into account the following points:
+- Services are generated randomly under a sub-domain `*.your-domain-name.test`, so your TLS certificate should have a wildcard
+- Keycloak realm is `datalab-demo`, so all references for SSO should point to this realm 
+- Keycloak clients for Apache Superset, Grafana, MinIO and Ckan are also constant: `apache-superset`, `grafana`, `minio` and  `ckan`
+- Disable the optional features that you do not have an image for
+- Choose how your PostgreSQL deployment will be (one per service in sub-dependency or a common database)
 
-Helm install complete package with all the initial configurations already set up, for more information on the Chart check the [Chart README.md](../charts/datalab/README.md). *Helm Charts must be adapted to the domain used*
+### Helm Chart Deployment
 
-Keep in mind it is necessary to:
-- have the created Ckan image published and referenced in `values.yaml` if the data catalog feature is desired.
-  - have the created Onyxia-web image published and referenced in `values.yaml` if it is desired to have a  link in the frontend redirecting to the data catalog (for now)
-- configure `Postgres` as a dependency and disable it in other services to achieve a deployment with only one DB, **OR** disable the `Postgres` dependency and leave the it enabled in the other services to have multiple DBs.
-
-More information on these configurations may be found below in the **Configurable Parameters** section, in [Chart README.md](../charts/datalab/README.md).
-
-After having the desired configurations achieved, you can install the chart:
+The Helm Chart deployment itself, can be done from the Helm repo (https://eurostat.github.io/datalab/) or locally from a clone (https://github.com/eurostat/datalab). It is advised to pass through the [Chart README](../charts/datalab/README.md) before deploying.
 
 ```
-cd datalab/charts/datalab
-helm upgrade --install datalab . -f values.yaml --wait
+helm repo add eurostat-datalab https://eurostat.github.io/datalab/
+helm repo update
+helm show values eurostat-datalab/datalab > values.yaml
 ```
 
-## Additional Configurations
+**IMPORTANT**: create your own `values.yaml` based on the default `values.yaml` with your domain name, SMTP server, and passwords.
 
-After successful installation, configure HashiCorp's Vault to be used by Onyxia and Keycloak `jwt` authentication.
+> **ATTENTION** ensure you do not commit your `values.yaml` with secrets to the SCM.
+
+```
+helm upgrade --install datalab eurostat-datalab/datalab -f values.yaml --wait
+```
+
+### Manual Steps
+
+Some manual steps are necessary to fully complete the datalab deployment:
+- Vault initialisation and unsealing
+- Vault JWT authentication setup
+- Vault group policy synchronization
+- (OPTIONAL) MinIO group policy synchronization
+- (OPTIONAL) Extend alert rules
+
+After Keycloak's pod is ready, initialise and [unseal HashiCorp's Vault](https://www.vaultproject.io/docs/concepts/seal) and configure it to be used by Onyxia and Keycloak `jwt` authentication, more on this can be read in the official documentation [Hashicorp's Vault JWT Auth](https://www.vaultproject.io/docs/auth/jwt).
+
 ```bash
 kubectl exec --stdin --tty datalab-vault-0 -- /bin/sh
 
-# inside the pod... place both to 1 in development for ease of use
+# inside the pod
 vault operator init -key-shares=5 -key-threshold=3
 
 # ******************** IMPORTANT ******************** 
@@ -153,9 +189,41 @@ vault operator unseal # key share 3
 
 # Run the mounted configmap with the root-token as env var
 VAULT_TOKEN=<root-token> ./vault/scripts/configscript.sh
+
+# you can exit the pod - remember to keep the unseal key shares and initial root token
+exit
 ```
 
-And enable CORS for Onyxia access.
+Enable CORS for Onyxia access to Vault, and run the [helper script](../charts/datalab/helpers/vault-groups-config.sh) (or equivalent) with your own desired groups (projects).
+```bash
+# fill in the received root token and your own vault ingress addr
+export VAULT_TOKEN=<root-token>
+export VAULT_ADDR=https://vault.example.test
+# ensure to change the domain name of your Onyxia ingress addr
+curl --header "X-Vault-Token: $VAULT_TOKEN" --request PUT --data '{"allowed_origins": ["https://datalab.example.test", '"\"$VAULT_ADDR\""' ]}'  $VAULT_ADDR/v1/sys/config/cors
+# ensure to change the GROUP_LIST variable for your desired groups and run it
+sh /<path/to/your/helper/script>/vault-groups-config.sh
 ```
-curl --header "X-Vault-Token: <root-token>" --request PUT --data '{"allowed_origins": ["https://datalab.example.test", "https://vault.example.test" ]}'  https://vault.example.test/v1/sys/config/cors
+
+MinIO should have it's pre-configured policy for each user based on the [policy-template.tpl](../charts/datalab/templates/_policy-template.tpl), and there is a cronjob that will ensure a synchronization with group membership in Keycloak and policies in MinIO. However, if you want to ensure that synchronization is executed, you can always create a job out of the cronjob specification:
+```bash
+kubectl create job --from=cronjob/policy-update-cronjob immediate-policy-update
 ```
+
+If alert rules changes are required you can edit the configmap `prometheus-alerts` after or [before](../charts/datalab/templates/prometheus-rules-cm.yaml) deployment. This will trigger a reload of the configmap and the creation of the alert rules in the Prometheus server. For more information on how to write the rules, visit the official [Prometheus documentation](https://prometheus.io/docs/prometheus/latest/configuration/alerting_rules/). 
+
+### Basic Operations
+
+The platform administrator should have access to the admin roles in Kubernetes, Keycloak, and Grafana. With these he can monitor the usage of the platform, manage users and permissions. More information can be found in the [OPERATING.md](./OPERATING.md) documentation.
+
+
+Onyxia works with the `project` (interchangeable with `group` in the next paragraph) concept, which groups the users into shared services. MinIO and Vault also implement this in their own policies, but to ensure the policies update MinIO uses a cronjob and Vault has to be done manually as described in the previous section. This concept is implemented through the `groups` claim in the `jwt` token, which is in fact managed by Keycloak (or an external identity provider). The platform administrator with access to the identity provider is the one responsible for this group assigning, and triggering the policy change in Vault.
+
+
+Quotas and thresholds for alerts can be setup in the `values.yaml`, however, it is also possible to configure them during runtime, by changing the ConfigMap `prometheus-alerts`, which in turn will be reloaded by the Prometheus server sidecar for ConfigMap reload. Note that the receiver should be the platform administrator that can then act upon the alert triggering, either by communicating with the users or by taking action in the cluster (e.g., helm uninstall of a long running inactive service).
+
+## Additional Configurations
+
+It is possible to do further configurations around the deployed Data Lab, namely add more Prometheus rules or Grafana dashboards. Complementary information is given on [OPERATING.md](./OPERATING.md).
+
+In the future, any additional configurations will be specified here. Work in progress... :hammer_and_wrench: :warning:

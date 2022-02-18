@@ -1,0 +1,42 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: gitlab-post-install-job
+  labels:
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    helm.sh/chart: "{{ .Chart.Name }}-{{ .Chart.Version }}"
+  annotations:
+    helm.sh/hook: post-install,post-upgrade
+    helm.sh/hook-delete-policy: hook-succeeded,before-hook-creation
+spec:
+  template:
+    metadata:
+      name: "{{ .Release.Name }}"
+      labels:
+        app.kubernetes.io/managed-by: {{ .Release.Service | quote }}
+        app.kubernetes.io/instance: {{ .Release.Name | quote }}
+        helm.sh/chart: "{{ .Chart.Name }}-{{ .Chart.Version }}"
+    spec:
+      restartPolicy: Never
+      containers:
+      - name: gitlab-post-install-job
+        image: python:3.9.7
+        imagePullPolicy: IfNotPresent
+        command: ["/bin/sh","-c"]
+        args: ["pip3 install bs4; pip3 install lxml; pip3 install requests; python3 bin/script.py"]
+        volumeMounts:
+        - mountPath: /bin/script.py
+          name: configmap-volume
+          subPath: script.py
+        env:
+          - name: ROOT_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: {{ .Release.Name }}-gitlab-initial-root-password
+                key: password
+      volumes:
+      - name: configmap-volume
+        configMap:
+          defaultMode: 0700
+          name: gitlab-post-install-script

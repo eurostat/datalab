@@ -4,6 +4,7 @@ The Data Lab documentation is in development and divided into the following sect
 - [Readme](./README.md)
 - [Data Lab Architecture](./ARCHITECTURE.md)
 - [Data Lab Deployment](./DEPLOYMENT.md)
+- [Data Lab Operating](./OPERATING.md)
 
 ## :warning: Disclaimer :warning:
 The documentation is still in development.

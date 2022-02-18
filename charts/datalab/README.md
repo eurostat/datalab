@@ -1,4 +1,4 @@
-# Data Lab Helm Chart based on Onyxia, Keycloak, MinIO&reg;, HashiCorp's Vault, Ckan, Prometheus and Grafana;
+# Data Lab Helm Chart based on Onyxia, Keycloak, MinIO&reg;, HashiCorp's Vault, Ckan, Prometheus, Grafana and Apache Superset
 
 - [Onyxia](https://github.com/InseeFrLab/onyxia) is a web app that aims at being the glue between multiple open source backend technologies to provide a state of art working environnement for data scientists. Onyxia is developed by the French National institute of statistic and economic studies (INSEE).
 - [Keycloak](https://www.keycloak.org/) is a high performance Java-based identity and access management solution. It lets developers add an authentication layer to their applications with minimum effort.
@@ -8,6 +8,7 @@
 - [Grafana](https://grafana.com/) is an observability tool to add value to the collected metrics.
 - [Ckan](https://ckan.org/) is a data management system. For the purpose of this project it will be used as a data catalog.
 - (OPTIONAL) [PostgreSQL](https://www.postgresql.org/) is a powerful, open source object-relational database system with over 30 years of active development that has earned it a strong reputation for reliability, feature robustness, and performance.
+- [Apache Superset](https://superset.apache.org/) is a modern data exploration and visualization platform. For the purpose of this project it will be used as the main data visualization tool to share dashboards between users. 
 
 
 
@@ -52,8 +53,6 @@ And enable CORS for Onyxia access.
 curl --header "X-Vault-Token: <root-token>" --request PUT --data '{"allowed_origins": ["https://datalab.example.test", "https://vault.example.test" ]}'  https://vault.example.test/v1/sys/config/cors
 ```
 
-Finally, if you want to use the groups feature, you'll have to configure policies for each group you create, a helper script can be found at `helpers/vault-groups-config.sh`.
-
 ## Introduction
 
 This Chart wraps the necessary services to launch a complete data lab on a [Kubernetes](https://kubernetes.io/) cluster using [Helm](https://helm.sh/) package manager. It provisions the central component of the data lab [Onyxia](https://github.com/InseeFrLab/onyxia), and the necessary peripheral components to handle IAM ([Keycloak](https://www.keycloak.org/)), Storage ([MinIO&reg;](https://min.io/)), Secrets Management ([HashiCorp's Vault](https://www.vaultproject.io/)), Monitoring ([Prometheus](https://prometheus.io/)+[Grafana](https://grafana.com/)) and Data Catalog ([Ckan](https://ckan.org/)).
@@ -67,8 +66,10 @@ This Chart has the prerequisistes explained in the [docs](../../docs/DEPLOYMENT.
 - Ingress controller
 - Domain name and records pointing to the ingress controller
 - (RECOMMENDED) wildcard TLS certificate configured for the ingress controller
-- (OPTIONAL) SMTP server for user `Forgot password?` interactions and admin user account imposed actions
+- (RECOMMENDED) SMTP server for automated messages and authentication methods configuration in Keycloak
 - (OPTIONAL) Ckan image with SSO configuration (Ckan extension + Keycloak Client definition)
+- (OPTIONAL) Keycloak metrics side car image (to measure user activity based on Keycloak events)
+- (OPTIONAL) User notification container image (to notify users of their own alerts)
 
 ## Dependencies
 
@@ -82,6 +83,10 @@ The dependencies of the Chart are the components of the data lab with:
   - [Redis Bitnami Chart](https://github.com/bitnami/charts/tree/master/bitnami/redis)
   - [Solr Bitnami Chart](https://github.com/helm/charts/tree/master/incubator/solr)
   - [Datapusher Bitnami Chart](https://github.com/keitaroinc/ckan-helm/tree/master/dependency-charts/datapusher)
+- [Prometheus Community Chart](https://github.com/prometheus-community/helm-charts/tree/main/charts/prometheus) with necessary additional configurations in metric labels, alerts, and alert routing.
+- [Grafana Chart](https://github.com/grafana/helm-charts/tree/main/charts/grafana) with pre-built dashboards for the platform monitoring, with Prometheus as the data source.
+- [Apache Superset Chart](https://github.com/apache/superset/tree/master/helm/superset) which has subdependency [Redis Bitnami Chart](https://github.com/bitnami/charts/tree/master/bitnami/redis) and [PostgreSQL Bitnami Chart](https://github.com/bitnami/charts/tree/master/bitnami/postgresql) with **recommended** configuration to use PV.
+
 
 ## Installing the Chart
 
@@ -123,8 +128,6 @@ And enable CORS for Onyxia access.
 curl --header "X-Vault-Token: <root-token>" --request PUT --data '{"allowed_origins": ["https://datalab.example.test", "https://vault.example.test" ]}'  https://vault.example.test/v1/sys/config/cors
 ```
 
-Finally, if you want to use the groups feature, you'll have to configure policies for each group you create, a helper script can be found at `helpers/vault-groups-config.sh`.
-
 ## Uninstalling the Chart
 
 This will delete the whole Chart. However, keep in mind that launched services during the utilization of the data lab will still be running. You will have to delete them from the user's namespaces.
@@ -143,12 +146,14 @@ kubectl delete pvc <pvc name|--all>
 
 ### Global
 
-| Name                |  Description                                                                                | Value              |
-| ------------------- | ------------------------------------------------------------------------------------------- | ------------------ |
-| domainName          | **REQUIRED** Your owned domain name which will serve as root for the generated sub-domains  | `""`               |
-| smtpServer          | Configuration for Keycloak to connect to your SMTP server                                   | `""`               |
+| Name                        |  Description                                                                                    | Value              |
+| --------------------------- | ----------------------------------------------------------------------------------------------- | ------------------ |
+| `domainName`                | **REQUIRED** Your owned domain name which will serve as root for the generated sub-domains      | `""`               |
+| `smtpServer`                | Configuration for Keycloak to connect to your SMTP server **(1)**                               | `""`               |
+| `autoUpdatePolicy.schedule` | Schedule for the MinIO update policy cronjob to run                                             | `"* */12 * * *"`   |
+| `userNotification`          | Configuration of a deployment and service to forward user notifications based on alerts **(2)** | `{}`               |
 
-The SMTP server configuration format would be:
+**(1)** The SMTP server configuration format would be:
 ```yaml
 smtpServer: |- 
   {
@@ -163,6 +168,67 @@ smtpServer: |-
     "user": ""
   }
 ```
+
+**(2)** The `userNotification` values have to take into consideration the HTTP POST request sent from Prometheus Alert Manager [configured webhook](https://prometheus.io/docs/alerting/latest/configuration/#webhook_config) in the Alert Manager files, found in the value `prometheus.alertmanagerFiles.alertmanager.yml` in the Chart. An image example to be used is described in [here](../../images/user-notification-container). The configuration, given an SMTP server, should be similar to the following example:
+```yaml
+userNotification:
+  enabled: true
+  service:
+    annotations: {}
+    labels: {}
+    webhookPort: 9992
+  deployment:
+    annotations: {}
+    labels: {}
+    podAnnotations: {}
+    podLabels: {}
+    containerImage: <your-image>
+    imagePullPolicy: Always
+    ports: |
+      - containerPort: 9992
+        name: notify-users
+        protocol: TCP
+    extraEnv: |
+      - name: KEYCLOAK_SC__SVC_NAME
+        value: http://{{ .Release.Name }}-keycloak-http.default.svc.cluster.local:80
+      - name: KEYCLOAK_ADMIN_USERNAME
+        value: ""
+      - name: KEYCLOAK_ADMIN_PASSWORD
+        value: ""
+      - name: SMTP_USERNAME
+        value: ""
+      - name: SMTP_PASSWORD
+        value: ""
+      - name: SMTP_SERVER
+        value: ""
+      - name: SMTP_SERVER_PORT
+        value: ""
+```
+
+Values for a demonstration with pre-configured users and projects (user groups):
+
+| Name                       |  Description                                                                    | Value               |
+| -------------------------- | ------------------------------------------------------------------------------- | ------------------- |
+| `demo`                     | Configuration block to set-up demo users and groups during the deployment       | see below           |
+| `demo.enabled`             | Enable the demo block configuration                                             | `true`              |
+| `demo.users`               | List of users to use in the demo                                                | see below           |
+| `demo.users[0].name`       | Name of a demo user                                                             | `jondoe`            |
+| `demo.users[0].password`   | Password of a demo user                                                         | `jondoe`            |
+| `demo.users[0].groups`     | Groups/projects of a demo user                                                  | `[g1, g2]`          |
+| `demo.projects`            | List of projects (user groups) to use in the demo                               | see below           |
+| `demo.projects[0].name`    | Name of a demo project                                                          | `g1`                |
+| `demo.projects[0].members` | List of members of a demo project                                               | `[jondoe, janedoe]` |
+
+Values for the alert thresholds that will influence the rules in [this file](./templates/prometheus-rules-cm.yaml), with an informed decision about [Requests and Limits](https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/) and your own cluster resources:
+
+| Name                               |  Description                                                                                    | Value       |
+| ---------------------------------- | ----------------------------------------------------------------------------------------------- | ----------- |
+| `alertThresholds`                  | Configuration block to set-up alert thresholds for the Prometheus rules                         | see below   |
+| `alertThresholds.inactivityPeriod` | Period, e.g. in days (`d`), in which no user activity will indicate a user is inactive          | `15d`       |
+| `alertThresholds.CpuRequestQuota`  | Soft quota (i.e., an alert) for CPU cores resource request per user                             | `0.5`       |
+| `alertThresholds.MemRequestQuota`  | Soft quota (i.e., an alert) for GB of memory resource request per user                          | `4`         |
+| `alertThresholds.CpuLimitsQuota`   | Soft quota (i.e., an alert) for CPU cores resource limit per user                               | `30`        |
+| `alertThresholds.MemLimitsQuota`   | Soft quota (i.e., an alert) for GB of memory resource limit per user                            | `64`        |
 
 ### Onyxia
 For more information on Onyxia configurations visit the available documentation on [InseeFrLab Onyxia](https://github.com/InseeFrLab/onyxia), and take a look at the Chart on [Onyxia InseeFrLab Chart](https://github.com/InseeFrLab/helm-charts/tree/master/charts/onyxia).
@@ -215,8 +281,24 @@ onyxia:
       OIDC_CLIENT_ID: onyxia-client
       OIDC_URL: https://keycloak.example.test/auth
       MINIO_URL: https://minio.example.test
+      VAULT_URL: https://vault.example.test
       REACT_APP_DATA_CATALOG_URL: ckan
       REACT_APP_DOMAIN_URL: example.test
+      REACT_APP_EXTRA_LEFTBAR_ITEMS: |
+        {
+          "links": 
+          [
+            {
+              "label": { "en": "My Data Visualization Tool", "fr": "Outil de visualisation de donn\u00e9es" },
+              "iconId": "SsidChart",
+              "url": "https://apache-superset.example.test",
+            },{
+              "label": { "en": "My Data Catalog", "fr": "Mes catalogue de donn\u00e9es" },
+              "iconId": "MenuBookOutlined",
+              "url": "https://ckan.example.test",
+            }
+          ]
+        }
 ```
 
 
@@ -335,12 +417,44 @@ Generic
 | `keycloak.replicas`                           | The number of replicas to create                                                | `1`                                        |
 | `keycloak.extraEnv`                           | Additional environment variables for Keycloak                                   | `""`                                       |
 | `keycloak.rbac.create`                        | Specifies whether RBAC resources are to be created                              | `false`                                    |
-| `keycloak.rbac.rules`                         | Custom RBAC rules, e.g. for KUBE_PING                                          | `[]`                                       |
-| `keycloak.extraVolumes`                       | Add additional volumes, e.g. realm configuration                               | `""`                                       |
-| `keycloak.extraVolumeMounts`                  | Add additional volumes mounts, e.g. realm configuration                        | `""`                                       |
+| `keycloak.rbac.rules`                         | Custom RBAC rules, e.g. for KUBE_PING                                           | `[]`                                       |
+| `keycloak.extraVolumes`                       | Add additional volumes, e.g. realm configuration                                | `""`                                       |
+| `keycloak.extraVolumeMounts`                  | Add additional volumes mounts, e.g. realm configuration                         | `""`                                       |
+| `keycloak.extraInitContainers`                | Add additional init containers, e.g. `keycloak-metrics-spi`                     | `""`                                       |
+| `keycloak.extraContainers`                    | Add additional side car containers, e.g. custom metrics container               | `""`                                       |
 | `keycloak.affinity`                           | Pod affinity                                                                    | Hard node and soft zone anti-affinity      |
+| `keycloak.service`                            | Service definition (e.g. add annotations for Prometheus scrapping)              | see bellow                                 |
 
-The value `keycloak.extraEnv`, if using a more than one replica, should also include a node discovery method, e.g. `KUBE_PING` as indicated by the Chart providers in the [documentation](https://github.com/codecentric/helm-charts/tree/master/charts/keycloak#kube_ping-service-discovery).
+The value `keycloak.extraEnv` will hold a lot of information to configure the Keycloak deployment, for example:
+- If using a more than one replica, should also include a node discovery method, e.g. `KUBE_PING` as indicated by the Chart providers in the [documentation](https://github.com/codecentric/helm-charts/tree/master/charts/keycloak#kube_ping-service-discovery).
+- To connect to a database `DB_VENDOR`, `DB_ADDR`, `DB_PORT`, `DB_DATABASE`, `DB_USER`, and `DB_PASSWORD` are necessary
+- If you want metrics, pushed to Prometheus it is necessary to indicate a `PROMETHEUS_PUSHGATEWAY_ADDRESS` (and also proceed with the `keycloak-metrics-spi` in the `extraInitContainers`)
+
+Another addition that can be made is to add a sidecar container to expose Keycloak metrics to a Prometheus scrapper. An example image can be built from this [Dockerfile](../../images/keycloak-metrics-sidecar), and it is necessary to set both the `extraContainer` and the service annotations, for example:
+```yaml
+extraContainers: |
+  - name: keycloak-event-metrics-sidecar
+    image: <your-image>
+    imagePullPolicy: IfNotPresent
+    env:
+      - name: KEYCLOAK_SC__SVC_NAME
+        value: http://localhost:8080
+      - name: KEYCLOAK_ADMIN_USERNAME
+        value: TODO
+      - name: KEYCLOAK_ADMIN_PASSWORD
+        value: TODO
+    ports:
+      - containerPort: 9991
+        name: event-sidecar
+        protocol: TCP
+
+service:
+  annotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "9991"
+    prometheus.io/path: "metrics"
+```
+
 
 Network
 
@@ -356,14 +470,11 @@ Network
 | `keycloak.ingress.annotations`                | Ingress annotations                                                             | `{}`                                       |
 
 
-PostgreSQL sub-dependency parameters to be set are:
+PostgreSQL sub-dependency can be disabled and a common PostgreSQL database can be used:
 
 | Name                                     |  Description                                            | Value      |
 | ---------------------------------------- | ------------------------------------------------------- | ---------- |
-| `keycloak.postgresql.enabled`            | If `true`, the Postgresql dependency is enabled         | `true`     |
-| `keycloak.postgresql.postgresqlUsername` | Value for PostgreSQL username                           | `""` |
-| `keycloak.postgresql.postgresqlPassword` | Value for PostgreSQL password                           | `""` |
-| `keycloak.postgresql.postgresqlDatabase` | PostgreSQL Database to create                           | `""` |
+| `keycloak.postgresql.enabled`            | If `true`, the Postgresql dependency is enabled         | `false`    |
 
 
 ### MinIO&reg;
@@ -380,7 +491,7 @@ Generic
 | `minio.secretKey.password`  | Root user secret key                                   | `""`         |
 | `minio.extraEnv`            | Extra environment variables                            | `""`         |
 
-The value for `minio.extraEnv`, if using Keycloak SSO should contain the following (with your domain):
+The value for `minio.extraEnv`, if using Keycloak SSO should contain the following (with your domain instead of `example.test`):
 
 ```yml
     - name: MINIO_IDENTITY_OPENID_CONFIG_URL
@@ -483,21 +594,16 @@ For an exhaustive configuration on Prometheus configurations visit the available
 | `prometheus.pushgateway.enabled`                     | To enable the Prometheus PushGateway                                    | `true`                        |
 | `prometheus.server`                                  | Server configuration block                                              | See Below                     |
 | `prometheus.server.enabled`                          | To enable the Prometheus Server                                         | `true`                        |
+| `prometheus.server.extraConfigmapMounts`             | List of configmap mounts for Prometheus Server                          | `[]`                          |
+| `prometheus.configmapReload`                         | Configuration block for configmap reload sidecar                        | See Below                     |
 | `prometheus.alertmanagerFiles`                       | Configmap entries for Alertmanager                                      | alertmanager.yml              |
+| `prometheus.serverFiles`                             | Configmap entries for Prometheus Server configurations                  | See Below                     |
+| `prometheus.kubeStateMetrics`                        | [KubeStateMetrics](https://github.com/kubernetes/kube-state-metrics) enable block | See Below           |
+| `prometheus.kubeStateMetrics.enabled`                | To enable the KubeStateMetrics agent                                            | `true`                |
+| `prometheus.kube-state-metrics`                      | [KubeStateMetrics](https://github.com/kubernetes/kube-state-metrics) configuration block | See [here](https://github.com/prometheus-community/helm-charts/tree/main/charts/kube-state-metrics)    |
 
-```yaml
-prometheus:
-  alertmanager:
-    enabled: true
-  nodeExporter:
-    enabled: true
-  pushgateway:
-    enabled: true
-  server:
-    enabled: true   
-```
 
-It is recommended to configure the Alertmanager, it can be done through the `alertmanagerFiles`, with more information on configuration available on the [Official Documentation](https://prometheus.io/docs/alerting/latest/configuration/):
+It is recommended to configure the Alertmanager, it can be done through the `alertmanagerFiles`, with more information on configuration available on the [Official Documentation](https://prometheus.io/docs/alerting/latest/configuration/). In the example configuration an email and a webhook (based on the [userNotification endpoint](#global)) are the default receivers of any alert that is triggered:
 
 ```yaml
     alertmanager.yml:
@@ -520,7 +626,46 @@ It is recommended to configure the Alertmanager, it can be done through the `ale
         - name: default-receiver
           email_configs:
             - to: example@example.test # your smtp email
+          webhook_configs:
+            - url: http://datalab-user-notification.default.svc.cluster.local:9992/webhook # your userNotification endpoint
+              send_resolved: false
       templates: []
+```
+
+It is also recommended to create [alerting rules](https://prometheus.io/docs/prometheus/latest/configuration/alerting_rules/) to send to the receiver to ensure proper usage of the platform, for example, to supervise users' resource consumption in Onyxia there are a set of rules in the [prometheus-configmap](./templates/prometheus-rules-cm.yaml), which is then mounted (and reloaded in case of any changes) through the configurations in both `server` and `configmapReload`:
+```yaml
+
+  server:
+    enabled: true   
+    extraConfigmapMounts:
+      - name: prometheus-alerts
+        mountPath: /etc/config/alerts
+        configMap: prometheus-alerts
+        readOnly: true
+        
+  configmapReload:
+    prometheus:
+      extraConfigmapMounts:
+        - name: prometheus-alerts
+          mountPath: /etc/alerts
+          configMap: prometheus-alerts
+          readOnly: true
+      extraVolumeDirs:
+        - /etc/alerts
+        
+  serverFiles:
+    prometheus.yml:
+      rule_files:
+        - /etc/config/rules/*.yml
+        - /etc/config/alerts/*.yml
+
+```
+
+Finally, the `kube-state-metrics` configuration block can allow labels from `pods`to be used in monitoring queries. For example:
+```yaml
+  kube-state-metrics:
+    metricLabelsAllowlist:
+      - pods=[*]
 ```
 
 ### Grafana
@@ -587,71 +732,71 @@ For an exhaustive list on Ckan configurations visit the available chart descript
 
 Generic
 
-| Key                                | Description                                                                                                                   | Value                    |
-|------------------------------------|-------------------------------------------------------------------------------------------------------------------------------|--------------------------|
-| `ckan.clientsecret`                | Client secret for CKAN Oauth client                                                                                           | `""`                     | 
-| `ckan.image.pullPolicy`            | Pull policy to keep the image up to date                                                                                      | `"IfNotPresent"`         | 
-| `ckan.image.repository`            | Image to pull                                                                                                                 | `"keitaro/ckan"`         | 
-| `ckan.image.tag`                   | Tag of image to pull                                                                                                          | `"2.9.2"` |  
-| `ckan.DBDeploymentName`            | Variable for name override for postgres deployment                                                                            | `"postgres"` |
-| `ckan.DBHost`                      | Variable for name of headless svc from postgres deployment                                                                    | `"postgres"` |
-| `ckan.MasterDBName`                | Variable for name of the master user database in PostgreSQL                                                                   | `"ckan"` | 
-| `ckan.MasterDBPass`                | Variable for password for the master user in PostgreSQL                                                                       | `"pass"` | 
-| `ckan.MasterDBUser`                | Variable for master user name for PostgreSQL                                                                                  | `"postgres"` | 
-| `ckan.CkanDBName`                  | Variable for name of the database used by CKAN                                                                                | `"ckan_default"` | 
-| `ckan.CkanDBPass`                  | Variable for password for the CKAN database owner                                                                             | `"pass"` | 
-| `ckan.CkanDBUser`                  | Variable for username for the owner of the CKAN database                                                                      | `"ckan_default"` | 
-| `ckan.DatastoreDBName`             | Variable for name of the database used by Datastore                                                                           | `"datastore_default"` | 
-| `ckan.DatastoreRODBPass`           | Variable for password for the datastore database user with read access                                                        | `"pass"` | 
-| `ckan.DatastoreRODBUser`           | Variable for username for the user with read access to the datastore database                                                 | `"datastorero"` | 
-| `ckan.DatastoreRWDBPass`           | Variable for password for the datastore database user with write access                                                       | `"pass"` | 
-| `ckan.DatastoreRWDBUser`           | Variable for username for the user with write access to the datastore database                                                | `"datastorerw"` | 
+| Key                                | Description                                                                          | Value                    |
+|------------------------------------|--------------------------------------------------------------------------------------|--------------------------|
+| `ckan.clientsecret`                | Client secret for CKAN Oauth client                                                  | `""`                     | 
+| `ckan.image.pullPolicy`            | Pull policy to keep the image up to date                                             | `"IfNotPresent"`         | 
+| `ckan.image.repository`            | Image to pull                                                                        | `"keitaro/ckan"`         | 
+| `ckan.image.tag`                   | Tag of image to pull                                                                 | `"2.9.2"`                |  
+| `ckan.DBDeploymentName`            | Variable for name override for postgres deployment                                   | `"postgres"`             |
+| `ckan.DBHost`                      | Variable for name of headless svc from postgres deployment                           | `"postgres"`             |
+| `ckan.MasterDBName`                | Variable for name of the master user database in PostgreSQL                          | `"ckan"`                 | 
+| `ckan.MasterDBPass`                | Variable for password for the master user in PostgreSQL                              | `"pass"`                 | 
+| `ckan.MasterDBUser`                | Variable for master user name for PostgreSQL                                         | `"postgres"`             | 
+| `ckan.CkanDBName`                  | Variable for name of the database used by CKAN                                       | `"ckan_default"`         | 
+| `ckan.CkanDBPass`                  | Variable for password for the CKAN database owner                                    | `"pass"`                 | 
+| `ckan.CkanDBUser`                  | Variable for username for the owner of the CKAN database                             | `"ckan_default"`         | 
+| `ckan.DatastoreDBName`             | Variable for name of the database used by Datastore                                  | `"datastore_default"`    | 
+| `ckan.DatastoreRODBPass`           | Variable for password for the datastore database user with read access               | `"pass"`                 | 
+| `ckan.DatastoreRODBUser`           | Variable for username for the user with read access to the datastore database        | `"datastorero"`          | 
+| `ckan.DatastoreRWDBPass`           | Variable for password for the datastore database user with write access              | `"pass"`                 | 
+| `ckan.DatastoreRWDBUser`           | Variable for username for the user with write access to the datastore database       | `"datastorerw"`          | 
 
 Network
 
-| Key                                | Description                                                                                                                   | Value                    |
-|------------------------------------|-------------------------------------------------------------------------------------------------------------------------------|--------------------------|
-| `ckan.ingress.annotations`         | Ingress annotations                                                                                                           | `{}` | 
-| `ckan.ingress.enabled`             | Ingress enablement                                                                                                            | `true` | 
-| `ckan.ingress.hosts[0].host`       | Ingress resource hosts list                                                                                                   | `"chart-example.local"` |
-| `ckan.ingress.hosts[0].paths`      | Ingress resource hosts' path list                                                                                             | `[/]` |
-| `ckan.ingress.tls[0].hosts`        | Ingress resource tls hosts list                                                                                               | `"chart-example.local"` |
+| Key                                | Description                              | Value                    |
+|------------------------------------|------------------------------------------|--------------------------|
+| `ckan.ingress.annotations`         | Ingress annotations                      | `{}`                     | 
+| `ckan.ingress.enabled`             | Ingress enablement                       | `true`                   | 
+| `ckan.ingress.hosts[0].host`       | Ingress resource hosts list              | `"chart-example.local"`  |
+| `ckan.ingress.hosts[0].paths`      | Ingress resource hosts' path list        | `[/]`                    |
+| `ckan.ingress.tls[0].hosts`        | Ingress resource tls hosts list          | `"chart-example.local"`  |
 
 Ckan Specifications
 
-| Key                                | Description                                                                                                                   | Value                    |
-|------------------------------------|-------------------------------------------------------------------------------------------------------------------------------|--------------------------|
-| `ckan.ckan.siteUrl`                | Url for the CKAN instance                                                                                                     | `"http://localhost:5000"`| 
-| `ckan.ckan.psql.initialize`        | Flag whether to initialize the PostgreSQL instance with the provided users and databases                                      | `true` | 
-| `ckan.ckan.psql.masterDatabase`    | PostgreSQL database for the master user                                                                                       | `"postgres"` | 
-| `ckan.ckan.psql.masterPassword`    | PostgreSQL master user password                                                                                               | `"pass"` | 
-| `ckan.ckan.psql.masterUser`        | PostgreSQL master username                                                                                                    | `"postgres"` | 
-| `ckan.ckan.db.ckanDbName`          | Name of the database to be used by CKAN                                                                                       | `"ckan_default"` | 
-| `ckan.ckan.db.ckanDbPassword`      | Password of the user for the database to be used by CKAN                                                                      | `"pass"` | 
-| `ckan.ckan.db.ckanDbUrl`           | Url of the PostgreSQL server where the CKAN database is hosted                                                                | `"postgres"` | 
-| `ckan.ckan.db.ckanDbUser`          | Username of the database to be used by CKAN                                                                                   | `"ckan_default"` | 
-| `ckan.ckan.datastore.RoDbName`     | Name of the database to be used for Datastore                                                                                 | `"datastore_default"` | 
-| `ckan.ckan.datastore.RoDbPassword` | Password for the datastore read permissions user                                                                              | `"pass"` | 
-| `ckan.ckan.datastore.RoDbUrl`      | Url of the PostgreSQL server where the datastore database is hosted                                                           | `"postgres"` | 
-| `ckan.ckan.datastore.RoDbUser`     | Username for the datastore database with read permissions                                                                     | `"datastorero"` | 
-| `ckan.ckan.datastore.RwDbName`     | Name of the database to be used for Datastore                                                                                 | `"datastorero"` | 
-| `ckan.ckan.datastore.RwDbPassword` | Password for the datastore write permissions user                                                                             | `"pass"` | 
-| `ckan.ckan.datastore.RwDbUrl`      | Url of the PostgreSQL server where the datastore database is hosted                                                           | `"postgres"` | 
-| `ckan.ckan.datastore.RwDbUser`     | Username for the datastore database with write permissions                                                                    | `"datastorerw"` | 
+| Key                                | Description                                                                                   | Value                    |
+|------------------------------------|-----------------------------------------------------------------------------------------------|--------------------------|
+| `ckan.ckan.siteUrl`                | Url for the CKAN instance                                                                     | `"http://localhost:5000"`| 
+| `ckan.ckan.psql.initialize`        | Flag whether to initialize the PostgreSQL instance with the provided users and databases      | `true`                   | 
+| `ckan.ckan.psql.masterDatabase`    | PostgreSQL database for the master user                                                       | `"postgres"`             | 
+| `ckan.ckan.psql.masterPassword`    | PostgreSQL master user password                                                               | `"pass"`                 | 
+| `ckan.ckan.psql.masterUser`        | PostgreSQL master username                                                                    | `"postgres"`             | 
+| `ckan.ckan.db.ckanDbName`          | Name of the database to be used by CKAN                                                       | `"ckan_default"`         | 
+| `ckan.ckan.db.ckanDbPassword`      | Password of the user for the database to be used by CKAN                                      | `"pass"`                 |  
+| `ckan.ckan.db.ckanDbUrl`           | Url of the PostgreSQL server where the CKAN database is hosted                                | `"postgres"`             | 
+| `ckan.ckan.db.ckanDbUser`          | Username of the database to be used by CKAN                                                   | `"ckan_default"`         | 
+| `ckan.ckan.datastore.RoDbName`     | Name of the database to be used for Datastore                                                 | `"datastore_default"`    | 
+| `ckan.ckan.datastore.RoDbPassword` | Password for the datastore read permissions user                                              | `"pass"`                 | 
+| `ckan.ckan.datastore.RoDbUrl`      | Url of the PostgreSQL server where the datastore database is hosted                           | `"postgres"`             | 
+| `ckan.ckan.datastore.RoDbUser`     | Username for the datastore database with read permissions                                     | `"datastorero"`          | 
+| `ckan.ckan.datastore.RwDbName`     | Name of the database to be used for Datastore                                                 | `"datastorero"`          | 
+| `ckan.ckan.datastore.RwDbPassword` | Password for the datastore write permissions user                                             | `"pass"`                 | 
+| `ckan.ckan.datastore.RwDbUrl`      | Url of the PostgreSQL server where the datastore database is hosted                           | `"postgres"`             | 
+| `ckan.ckan.datastore.RwDbUser`     | Username for the datastore database with write permissions                                    | `"datastorerw"`          | 
 
 Database
 
 | Key                                | Description                                                                                                                   | Value                    |
 |------------------------------------|-------------------------------------------------------------------------------------------------------------------------------|--------------------------|
-| `ckan.postgresql.enabled`          | Flag to control whether to deploy PostgreSQL                                                                                  | `true` | 
-| `ckan.postgresql.existingSecret`   | Name of existing secret that holds passwords for PostgreSQL                                                                   | `"postgrescredentials"` | 
-| `ckan.postgresql.fullnameOverride` | Name override for the PostgreSQL deployment                                                                                   | `"postgres"` | 
-| `ckan.postgresql.persistence.size` | Size of the PostgreSQL pvc                                                                                                    | `"1Gi"` | 
-| `ckan.postgresql.pgPass`           | Password for the master PostgreSQL user. Feeds into the `postgrescredentials` secret that is provided to the PostgreSQL chart | `"pass"` | 
+| `ckan.postgresql.enabled`          | Flag to control whether to deploy PostgreSQL                                                                                  | `true`                   | 
+| `ckan.postgresql.existingSecret`   | Name of existing secret that holds passwords for PostgreSQL                                                                   | `"postgrescredentials"`  | 
+| `ckan.postgresql.fullnameOverride` | Name override for the PostgreSQL deployment                                                                                   | `"postgres"`             | 
+| `ckan.postgresql.persistence.size` | Size of the PostgreSQL pvc                                                                                                    | `"1Gi"`                  | 
+| `ckan.postgresql.pgPass`           | Password for the master PostgreSQL user. Feeds into the `postgrescredentials` secret that is provided to the PostgreSQL chart | `"pass"`                 | 
 
 To achieve a Ckan image with Keycloak SSO, we created our own image of Ckan to automatically add a Ckan extension. We made a Ckan image which installs [ckan-oauth2](https://github.com/conwetlab/ckanext-oauth2) on launching while it also configures every necessary value to configure our pre-created Ckan client on Keycloak. The added lines to the [Ckan image](https://github.com/keitaroinc/docker-ckan/tree/master/images/ckan) Dockerfile were the following:
 
-```Docker
+```Dockerfile
 ENV CKAN__PLUGINS envvars image_view text_view recline_view datastore datapusher oauth2
 RUN pip install --no-index --find-links=/srv/app/ext_wheels ckanext-oauth2
     # Keycloak settings
@@ -671,7 +816,7 @@ RUN paster --plugin=ckan config-tool ${APP_DIR}/production.ini "ckan.oauth2.logo
 
 By default, the Keycloak's users would have the minimum privileges in the platform, so it is also required to configure these values in the image:
 
-```Docker
+```Dockerfile
     # Authorization settings
 RUN paster --plugin=ckan config-tool ${APP_DIR}/production.ini -e "ckan.auth.anon_create_dataset = false" && \
     paster --plugin=ckan config-tool ${APP_DIR}/production.ini -e "ckan.auth.create_unowned_dataset = false" && \
@@ -723,7 +868,7 @@ For an exhaustive list on PostgreSQL configurations visit the available chart de
 
 As for the PostgreSQL dependency usage in this context, only the following values must be configured:
 
-| Name                                               | Description                                                                          | Value |
+| Name                                               | Description                                                                                                                 | Value |
 | -------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- | ----- |
 | `postgresql.global.postgresql.postgresqlDatabase`  | PostgreSQL database (overrides `postgresqlDatabase`)                                                                        | `""`  |
 | `postgresql.global.postgresql.postgresqlUsername`  | PostgreSQL username (overrides `postgresqlUsername`)                                                                        | `""`  |
@@ -741,6 +886,7 @@ The `initdbScript` to be run while the instance is launching, should create all 
 - a Database, User, Password and Grants for Ckan (Master) 
 - a Database, User, Password and Grants for Ckan (Default) 
 - a Database, Users, Passwords and Grants for Datastore (Read and Write users)
+- a Database, User, Password and Grants for Superset 
 
 The following code demonstrates how to do so for either of the previous points: 
 ```bash
@@ -753,3 +899,124 @@ psql postgresql://postgres:{{.Values.postgresql.postgresqlPostgresPassword}}@loc
 ```
 
 Having the PostgreSQL instance ready, the referent chart's values should also match the ones used in the PostgreSQL instance launching. Not only the `DBHost` variable but also all the users, passwords and database dependencies disabled.
+
+
+### Superset
+
+Superset is a dependency of this Chart, created with the [Offical Superset Helm Chart](https://github.com/apache/superset/tree/master/helm/superset). Since there is already a database in the cluster it is possible to use that one as Superset backend database, however it is also possible to customize your own PostgreSQL sub-dependency from superset (more information at the Superset [values.yaml](https://github.com/apache/superset/blob/master/helm/superset/values.yaml)). The used values on this Chart are the following:
+
+| Key                                | Description                                                              | Value                        |
+|------------------------------------|--------------------------------------------------------------------------|------------------------------|
+| `superset.enable`                  | Enable Superset sub Chart to be launched with the rest                   | `true`                       | 
+| `superset.clientsecret`            | Client secret for the OAuth 2.0 server-side client with Keycloak         | `your-client-secret`         | 
+| `superset.flasksecret`             | Flask secret used in signing cookies                                     | `your-flask-secret`          | 
+| `superset.configSSO`               | Your Keycloak ingress (or DNS)                                           | `keycloak.example.test`      | 
+| `superset.supersetNode`            | Configuration of the superset node                                       | See below **(1)**            | 
+| `superset.postgresql.enabled`      | To enable the PostgreSQL sub-dependency                                  | `false`                      | 
+| `superset.redis.enable`            | To enable the Redis sub-dependency Chart                                 | `true`                       | 
+| `superset.redis.redisHost`         | To name the host of the launched Redis in sub-dependency                 | `datalab-redis-headless`     | 
+| `superset.redis.usePassword`       | Flag to use password in Redis authentication                             | `false`                      | 
+| `superset.extraConfigs`            | Extra configurations to be applied to Superset (e.g., allow uploads)     | See below **(2)**            | 
+| `superset.extraSecrets`            | Extra Secrets to mount as drives                                         | See below **(3)**            | 
+| `superset.configOverrides`         | Superset configuration overrides (e.g., authentication method)           | See below **(3)**            | 
+| `superset.extraVolumes`            | Extra volumes to create out of secrets or configmaps (e.g., with client secrets)  | See below **(3)**   | 
+| `superset.extraVolumeMounts`       | Extra volume mounts                                                      | See below **(3)**            | 
+| `superset.bootstrapScript`         | Bootstrap Script to run in Superset                                      | See below **(4)**            |
+
+**(1)** The default supersetNode configuration in this Chart assumes a pre-created PostgreSQL database and a Redis created in a sub-dependency:
+```yaml
+  supersetNode:
+    command:
+      - "/bin/sh"
+      - "-c"
+      - ". {{ .Values.configMountPath }}/superset_bootstrap.sh; /usr/bin/run-server.sh"
+    connections:
+      redis_host: datalab-redis-headless
+      redis_port: "6379"
+      db_host: postgres-headless
+      db_port: 5432
+      db_user: superset
+      db_pass: superset
+      db_name: superset
+```
+
+**(2)** Apache Superset can be further configured with `extraConfigs`, for example, to enable files upload it is necessary to do the following:
+```yaml
+  extraConfigs: 
+    datasources-init.yaml: |
+        databases:
+        - allow_file_upload: true
+          allow_ctas: true
+          allow_cvas: true
+          database_name: superset
+          extra: "{\r\n    \"metadata_params\": {},\r\n    \"engine_params\": {},\r\n    \"\
+            metadata_cache_timeout\": {},\r\n    \"schemas_allowed_for_file_upload\": []\r\n\
+            }"
+          sqlalchemy_uri: example://superset.local
+          tables: []
+```
+
+**(3)** In order to set Keycloak as the authentication method, it is necessary to override configurations, create a [custom login flow](./templates/_superset-security-manager.tpl) for OIDC authentication, and mount the `client-secret` to use it:
+```yaml
+  extraSecrets:
+    custom_sso_security_manager.py: |-
+      {{ include "datalab.superset.securitymanager" . }}
+      
+  configOverrides:
+    enable_oauth: |-
+      {{ include "datalab.superset.enableoauth" . }}
+    proxy_https: |
+      ENABLE_PROXY_FIX = True
+      PREFERRED_URL_SCHEME = 'https'
+
+  extraVolumes:
+    - name: clientsecret
+      secret:
+        secretName: "{{ .Release.Name }}-superset-client-secret"
+        defaultMode: 0600
+
+  extraVolumeMounts:
+    - name: clientsecret
+      mountPath: /mnt/secret
+``` 
+
+**(4)** The bootstrap script can include different libraries to make available for Superset functionning:
+```yaml  
+  bootstrapScript: |
+    #!/bin/bash
+    rm -rf /var/lib/apt/lists/* && \
+    pip install \
+      psycopg2-binary==2.9.1 \
+      redis==3.5.3 \
+      Flask-OIDC==1.3.0 && \
+    if [ ! -f ~/bootstrap ]; then echo "Running Superset with uid 0" > ~/bootstrap; fi
+
+``` 
+
+Network
+
+| Key                                    | Description                              | Value                            |
+|----------------------------------------|------------------------------------------|----------------------------------|
+| `superset.ingress.annotations`         | Ingress annotations                      | See below                        | 
+| `superset.ingress.enabled`             | Ingress enablement                       | `true`                           | 
+| `superset.ingress.ingressClassName`    | Ingress class name                       | `"nginx"`                        |
+| `superset.ingress.path`                | Ingress resource path                    | `/  `                            |
+| `superset.ingress.pathType`            | Ingress resource path type               | `ImplementationSpecific`         |
+| `superset.ingress.hosts`               | Ingress resource hosts list              | `[apache-superset.example.test]` |
+
+To run Superset behind an `nginx` ingress controller, it is recommended to have some annotations:
+```yaml
+  ingress:
+    annotations:
+        # Extend timeout to allow long running queries.
+        nginx.ingress.kubernetes.io/proxy-connect-timeout: "300"
+        nginx.ingress.kubernetes.io/proxy-read-timeout: "300"
+        nginx.ingress.kubernetes.io/proxy-send-timeout: "300"
+        # Take size into account for bigger file uploads
+        nginx.org/client-max-body-size: "50m"
+        nginx.ingress.kubernetes.io/proxy-body-size: "128m"
+        # Always force https
+        nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+        nginx.ingress.kubernetes.io/preserve-trailing-slash: "true"
+```
+

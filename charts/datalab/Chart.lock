@@ -1,7 +1,7 @@
 dependencies:
 - name: minio
   repository: https://charts.bitnami.com/bitnami
-  version: 8.1.7
+  version: 10.1.0
 - name: keycloak
   repository: https://codecentric.github.io/helm-charts
   version: 15.1.0
@@ -23,5 +23,14 @@ dependencies:
 - name: ckan
   repository: https://keitaro-charts.storage.googleapis.com
   version: 1.0.1
-digest: sha256:dc07a4a79604cda9f6f34272c3678e1ced25e99fe7e911241dfa924959f1f986
-generated: "2021-12-06T16:36:10.8375608Z"
+- name: superset
+  repository: https://apache.github.io/superset
+  version: 0.5.4
+- name: redis
+  repository: https://charts.bitnami.com/bitnami
+  version: 16.1.0
+- name: gitlab
+  repository: https://charts.gitlab.io
+  version: 5.7.0
+digest: sha256:cc9933a629cc4cfb83f78af65ef3d0245cfca50151e0153ace47d52248cc6ff1
+generated: "2022-02-01T11:43:19.5980575Z"
