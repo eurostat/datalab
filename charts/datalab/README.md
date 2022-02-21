@@ -8,11 +8,13 @@
 - [Grafana](https://grafana.com/) is an observability tool to add value to the collected metrics.
 - [Ckan](https://ckan.org/) is a data management system. For the purpose of this project it will be used as a data catalog.
 - (OPTIONAL) [PostgreSQL](https://www.postgresql.org/) is a powerful, open source object-relational database system with over 30 years of active development that has earned it a strong reputation for reliability, feature robustness, and performance.
+- (OPTIONAL) [Redis](https://redis.io/) is an open source (BSD licensed), in-memory data structure store, used as a database, cache, and message broker. In the context of this project ,Redis is a subdependency of various non optional charts, so it made sense to have the option of having a single central instance for it. 
 - [Apache Superset](https://superset.apache.org/) is a modern data exploration and visualization platform. For the purpose of this project it will be used as the main data visualization tool to share dashboards between users. 
+- [Gitlab](https://about.gitlab.com/) is a DevOps platform. It helps to deliver software faster with better security and collaboration in a single platform. In this project, Gitlab will serve as git collaboration tool with DevOps features available.
 
 
 
-**Disclaimer**: All software products, projects and company names are trademark&trade; or registered&reg; trademarks of their respective holders, and use of them does not imply any affiliation or endorsement. Keycloak is licensed under Apache License v2.0. MinIO&reg; is licensed under GNU AGPL v3.0. HashiCorp's Vault Chart is licensed under MPL-2.0 License. Grafana is licensed under GNU AGPL v3.0. Prometheus is licensed under Apache License v2.0. Ckan is licensed under GNU AGPL v3.0.
+**Disclaimer**: All software products, projects and company names are trademark&trade; or registered&reg; trademarks of their respective holders, and use of them does not imply any affiliation or endorsement. Keycloak is licensed under Apache License v2.0. MinIO&reg; is licensed under GNU AGPL v3.0. HashiCorp's Vault Chart is licensed under MPL-2.0 License. Grafana is licensed under GNU AGPL v3.0. Prometheus is licensed under Apache License v2.0. Ckan is licensed under GNU AGPL v3.0. Redis is BSD licensed and Gitlab is MIT licensed.
 
 ## TL;DR
 ```
@@ -55,7 +57,7 @@ curl --header "X-Vault-Token: <root-token>" --request PUT --data '{"allowed_orig
 
 ## Introduction
 
-This Chart wraps the necessary services to launch a complete data lab on a [Kubernetes](https://kubernetes.io/) cluster using [Helm](https://helm.sh/) package manager. It provisions the central component of the data lab [Onyxia](https://github.com/InseeFrLab/onyxia), and the necessary peripheral components to handle IAM ([Keycloak](https://www.keycloak.org/)), Storage ([MinIO&reg;](https://min.io/)), Secrets Management ([HashiCorp's Vault](https://www.vaultproject.io/)), Monitoring ([Prometheus](https://prometheus.io/)+[Grafana](https://grafana.com/)) and Data Catalog ([Ckan](https://ckan.org/)).
+This Chart wraps the necessary services to launch a complete data lab on a [Kubernetes](https://kubernetes.io/) cluster using [Helm](https://helm.sh/) package manager. It provisions the central component of the data lab [Onyxia](https://github.com/InseeFrLab/onyxia), and the necessary peripheral components to handle IAM ([Keycloak](https://www.keycloak.org/)), Storage ([MinIO&reg;](https://min.io/)), Secrets Management ([HashiCorp's Vault](https://www.vaultproject.io/)), Monitoring ([Prometheus](https://prometheus.io/)+[Grafana](https://grafana.com/)), Data Catalog ([Ckan](https://ckan.org/)), Data exploration and visualization ([Apache Superset](https://superset.apache.org/)) and Collaboration/DevOps ([Gitlab](https://about.gitlab.com/)).
 
 ## Prerequisites
 
@@ -86,7 +88,13 @@ The dependencies of the Chart are the components of the data lab with:
 - [Prometheus Community Chart](https://github.com/prometheus-community/helm-charts/tree/main/charts/prometheus) with necessary additional configurations in metric labels, alerts, and alert routing.
 - [Grafana Chart](https://github.com/grafana/helm-charts/tree/main/charts/grafana) with pre-built dashboards for the platform monitoring, with Prometheus as the data source.
 - [Apache Superset Chart](https://github.com/apache/superset/tree/master/helm/superset) which has subdependency [Redis Bitnami Chart](https://github.com/bitnami/charts/tree/master/bitnami/redis) and [PostgreSQL Bitnami Chart](https://github.com/bitnami/charts/tree/master/bitnami/postgresql) with **recommended** configuration to use PV.
+- [Gitlab Chart](https://about.gitlab.com/) also with a few dependencies which include:
+  - [Redis Bitnami Chart](https://github.com/bitnami/charts/tree/master/bitnami/redis)
+  - [PostgreSQL Bitnami Chart](https://github.com/bitnami/charts/tree/master/bitnami/postgresql) with PostgreSQL version 12 or higher.
+  - [MinIO&reg; Bitnami Chart](https://github.com/bitnami/charts/tree/master/bitnami/minio)
+  - [Ingress-Nginx Chart](https://github.com/kubernetes/ingress-nginx/tree/main/charts/ingress-nginx)
 
+While on the topic of dependencies, it is relevant to state a few considerations needed for the chart to be able to install with no collisions when Gitlab is enabled. Gitlab does not limit its variables' values to be within the ``gitlab`` tag confines, instead, it uses any value within the ``global`` confines of the values file. To bypass this issue, we opted to attribute ``alias`` to MinIO&reg;, Prometheus, PostgreSQL and Redis, in order to make Gitlab ignore this values. Any ``alias`` different from the default will suffice.
 
 ## Installing the Chart
 
@@ -108,8 +116,8 @@ After successful installation, configure HashiCorp's Vault to be used by Onyxia 
 ```bash
 kubectl exec --stdin --tty datalab-vault-0 -- /bin/sh
 
-# inside the pod...
-vault operator init
+# inside the pod... place both to 1 in development for ease of use
+vault operator init -key-shares=5 -key-threshold=3
 
 # ******************** IMPORTANT ******************** 
 # Get Unseal Key shares and root token: keep them SAFE!
@@ -490,6 +498,7 @@ Generic
 | `minio.accessKey.password`  | Root user access key                                   | `""`         |
 | `minio.secretKey.password`  | Root user secret key                                   | `""`         |
 | `minio.extraEnv`            | Extra environment variables                            | `""`         |
+| `minio.defaultBuckets`            | MinIO&reg; default buckets to create on instalation                             | `""`         |
 
 The value for `minio.extraEnv`, if using Keycloak SSO should contain the following (with your domain instead of `example.test`):
 
@@ -887,6 +896,7 @@ The `initdbScript` to be run while the instance is launching, should create all 
 - a Database, User, Password and Grants for Ckan (Default) 
 - a Database, Users, Passwords and Grants for Datastore (Read and Write users)
 - a Database, User, Password and Grants for Superset 
+- a Database, User, Password and Grants for Gitalab (including user as superuser) 
 
 The following code demonstrates how to do so for either of the previous points: 
 ```bash
@@ -1020,3 +1030,286 @@ To run Superset behind an `nginx` ingress controller, it is recommended to have 
         nginx.ingress.kubernetes.io/preserve-trailing-slash: "true"
 ```
 
+
+### Gitlab
+
+Gitlab is a dependency of this Chart, created with the [Offical Gitlab Helm Chart](https://gitlab.com/gitlab-org/charts/gitlab/-/tree/master). Since there is already a database in the cluster it is possible to use that one as Gitlab backend database, however it is also possible to customize your own PostgreSQL sub-dependency from gitlab (more information at the Gitlab [values.yaml](https://gitlab.com/gitlab-org/charts/gitlab/-/blob/master/values.yaml)). The used values on this Chart are the following:
+
+Global (The global properties are used to configure multiple charts at once)
+
+PostgreSQL
+| Key                                | Description                                                              | Value                        |
+|------------------------------------|--------------------------------------------------------------------------|------------------------------|
+| `global.edition`                  | Gitlab edition to be used                   | `"ce"`                       | 
+| `global.psql.host`                  | PostgreSQL host (service)                   | `""`                       | 
+| `global.psql.port`                  | PostgreSQL service port                   | `5432`                       | 
+| `global.psql.database`                  | PostgreSQL database name                   | `"gitlabhq_production"`                       | 
+| `global.psql.username`                  | PostgreSQL username                   | `"gitlab"`                       | 
+| `global.psql.password.useSecret`                  | If PostgreSQL should use secret to load password                   | `true`                       | 
+| `global.psql.password.secret`                  | Secret name with PostgreSQL password                   | See below **(1)**                       | 
+| `global.psql.password.key`                  | Secret key with PostgreSQL password                   | See below **(1)**                       | 
+
+Ingress & Hosts configurations
+
+| Key                                | Description                                                              | Value                        |
+|------------------------------------|--------------------------------------------------------------------------|------------------------------|
+| `global.ingress.enabled`                  | If ingress is enabled                   | `{}`                       | 
+| `global.ingress.class`                  | Ingress class                   | `"nginx"`                       | 
+| `global.ingress.tls.enabled`                  | If Ingress TLS is enabled                   | `true`                       | 
+| `global.ingress.tls.secretname`                  | TLS certificate secret name                   | `""`                       | 
+| `global.ingress.configureCertmanager`                  | If certmanager should be installed                   | `{}`                       | 
+| `global.hosts.domain`                  | Domain to host Gitlab                   | `""`                       | 
+| `global.hosts.https`                  | If https is enabled                   | `{}`                       | 
+| `global.hosts.gitlab.name`                  | Gitlab hostname                   | `{}`                       | 
+| `global.hosts.gitlab.https`                  | If https is enabled                   | `{}`                       | 
+| `global.hosts.minio.name`                  | Minio hostname                   | `{}`                       | 
+| `global.hosts.minio.https`                  | If https is enabled                   | `{}`                       | 
+
+Minio bucket configurations
+
+| Key                                | Description                                                              | Value                        |
+|------------------------------------|--------------------------------------------------------------------------|------------------------------|
+| `global.mnio.enabled`                  | If Minio should be installed as Gitlab dependency                   | `{}`                       | 
+| `global.registry.bucket`                  | Bucket name to store registries                   | `""`                       | 
+| `global.appConfig.lfs.bucket`                  | Bucket name to store local file storage                   | `""`                       | 
+| `global.appConfig.lfs.connection.secret`                  | Secret name with connection to Minio details                   | See below **(1)**                       | 
+| `global.appConfig.lfs.connection.key`                  | Secret key with connection to Minio details                   | See below **(1)**                       | 
+| `global.appConfig.artifacts.bucket`                  | Bucket name to store artifacts                   | `""`                       | 
+| `global.appConfig.artifacts.connection.secret`                  | Secret name with connection to Minio details                   | See below **(1)**                       | 
+| `global.appConfig.artifacts.connection.key`                  | Secret key with connection to Minio details                   | See below **(1)**                       | 
+| `global.appConfig.uploads.bucket`                  | Bucket name to store uploads                   | `""`                       | 
+| `global.appConfig.uploads.connection.secret`                  | Secret name with connection to Minio details                   | See below **(1)**                       | 
+| `global.appConfig.uploads.connection.key`                  | Secret key with connection to Minio details                   | See below **(1)**                       | 
+| `global.appConfig.packages.bucket`                  | Bucket name to store packages                   | `""`                       | 
+| `global.appConfig.packages.connection.secret`                  | Secret name with connection to Minio details                   | See below **(1)**                       | 
+| `global.appConfig.packages.connection.key`                  | Secret key with connection to Minio details                   | See below **(1)**                       | 
+| `global.appConfig.backups.bucket`                  | Bucket name to store backups                   | `""`                       | 
+| `global.appConfig.backups.tmpBucket`                  | Bucket name to temporary store backups                   | `""`                       | 
+
+Omniauth
+
+| Key                                | Description                                                              | Value                        |
+|------------------------------------|--------------------------------------------------------------------------|------------------------------|
+| `global.omniauth.enabled`                  | Enable / disable the use of OmniAuth with GitLab                   | `{}`                       | 
+| `global.omniauth.autoSignInWithProvider`                  | Single provider name allowed to automatically sign in                   | `{}`                       | 
+| `global.omniauth.syncProfileFromProvider`                  | List of provider names that GitLab should automatically sync profile information from                   | `[]`                       | 
+| `global.omniauth.syncProfileAttributes`                  | List of profile attributes to sync from the provider upon login                   | `[]`                       | 
+| `global.omniauth.allowSingleSignOn`                  | Enable the automatic creation of accounts when signing in with OmniAuth                   | `[]`                       | 
+| `global.omniauth.blockAutoCreatedUsers`                  | If true auto created users will be blocked by default and will have to be unblocked by an administrator before they are able to sign in                   | `{}`                       | 
+| `global.omniauth.autoLinkLdapUser`                  | 	Can be used if you have LDAP / ActiveDirectory integration enabled                   | `{}`                       | 
+| `global.omniauth.autoLinkSamlUser`                  | 	Can be used if you have SAML integration enabled                   | `{}`                       | 
+| `global.omniauth.autoLinkUser`                  | 		Allows users authenticating via an OmniAuth provider to be automatically linked to a current GitLab user if their emails match                   | `[]`                       | 
+| `global.omniauth.externalProviders`                  | 			You can define which OmniAuth providers you want to be external, so that all users creating accounts, or logging in via these providers will be unable to access internal projects                   | `[]`                       | 
+| `global.omniauth.allowBypassTwoFactor`                  | 	Allows users to log in with the specified providers without two factor authentication | `[]`                       | 
+| `global.omniauth.providers.secret`                  | 	The secret name containing the provider block | See below **(1)**                       | 
+| `global.omniauth.providers.key`                  | 	The secret key containing the provider block | See below **(1)**                       | 
+| `global.initialDefaults.signupEnabled`                  | 	If the registering new accounts should be enabled | `{}`                       | 
+
+Incoming & Service Desk Emails
+
+| Key                                | Description                                                              | Value                        |
+|------------------------------------|--------------------------------------------------------------------------|------------------------------|
+| `global.incomingEmail.enabled`                  | If incoming email should be enabled                    | `{}`                       | 
+| `global.incomingEmail.address`                  | Incoming email address                    | `""`                       | 
+| `global.incomingEmail.host`                  | Incoming email host                    | `""`                       | 
+| `global.incomingEmail.port`                  | Incoming email port                    | `""`                       | 
+| `global.incomingEmail.ssl`                  | If incoming email ssl enabled                    | `{}`                       | 
+| `global.incomingEmail.startTls`                  | If incoming email startTls enabled                    | `{}`                       | 
+| `global.incomingEmail.user`                  | Incoming email user                    | `""`                       | 
+| `global.incomingEmail.password.secret`                  | Secret name with incoming email password                    | See below **(1)**                       | 
+| `global.incomingEmail.password.key`                  | Secret key with incoming email password                    | See below **(1)**                       | 
+| `global.incomingEmail.expungeDeleted`                  | If incoming email expunge should be deleted                    | `{}`                       | 
+| `global.incomingEmail.logger.logPath`                  | Path to logs from incoming email                    | `""`                       | 
+| `global.incomingEmail.mailbox`                  | Incoming email mailbox                    | `""`                       | 
+| `global.incomingEmail.idleTimeout`                  | Incoming email idleTimeout                    | `""`                       | 
+| `global.serviceDeskEmail.enabled`                  | If service desk email should be enabled                    | `{}`                       | 
+| `global.serviceDeskEmail.address`                  | Service desk email address                    | `""`                       | 
+| `global.serviceDeskEmail.host`                  | Service desk email host                    | `""`                       | 
+| `global.serviceDeskEmail.port`                  | Service desk email port                    | `""`                       | 
+| `global.serviceDeskEmail.ssl`                  | If service desk email ssl enabled                    | `{}`                       | 
+| `global.serviceDeskEmail.startTls`                  | If service desk email startTls enabled                    | `{}`                       | 
+| `global.serviceDeskEmail.user`                  | Service desk email user                    | `""`                       | 
+| `global.serviceDeskEmail.password.secret`                  | Secret name with service desk email password                    | See below **(1)**                       | 
+| `global.serviceDeskEmail.password.key`                  | Secret key with service desk email password                    | See below **(1)**                       | 
+| `global.serviceDeskEmail.expungeDeleted`                  | If service desk email expunge should be deleted                    | `{}`                       | 
+| `global.serviceDeskEmail.logger.logPath`                  | Path to logs from service desk email                    | `""`                       | 
+| `global.serviceDeskEmail.mailbox`                  | Service desk email mailbox                    | `""`                       | 
+| `global.serviceDeskEmail.idleTimeout`                  | Service desk email idleTimeout                    | `""`                       | 
+
+Rails & Redis
+
+| Key                                | Description                                                              | Value                        |
+|------------------------------------|--------------------------------------------------------------------------|------------------------------|
+| `global.rails.minio.provider`                  | Rails Minio provider                    | `""`                       | 
+| `global.rails.minio.region`                  | Rails Minio region                    | `""`                       | 
+| `global.rails.minio.aws_access_key_id`                  | Rails Minio aws access key id                    | `""`                       | 
+| `global.rails.minio.aws_secret_access_key`                  | Rails Minio aws secret access key                    | `""`                       | 
+| `global.rails.minio.aws_signature_version`                  | Rails Minio aws signature version                    | `""`                       | 
+| `global.rails.minio.host`                  | Rails Minio host                    | `""`                       | 
+| `global.rails.minio.endpoint`                  | Rails Minio endpoint                    | `""`                       | 
+| `global.rails.minio.path_style`                  | Rails Minio path style                    | `{}`                       | 
+| `global.redis.host`                  | Redis host (service)                    | `""`                       | 
+| `global.redis.password.enabled`                  | If Redis password is enabled                    | `{}`                       | 
+| `global.redis.password.secret`                  | Secret name with Redis password                    | See below **(1)**                       | 
+| `global.redis.password.key`                  | Secret key with Redis password                    | See below **(1)**                       | 
+
+General configurations for external dependencies
+
+| Key                                | Description                                                              | Value                        |
+|------------------------------------|--------------------------------------------------------------------------|------------------------------|
+| `prometheus.install`                  | If Gitlab should install prometheus as dependency                    | `{}`                       |
+| `postgresql.install`                  | If Gitlab should install postgresql as dependency                    | `{}`                       |
+| `redis.install`                  | If Gitlab should install redis as dependency                    | `{}`                       |
+| `nginx-ingress.install`                  | If Gitlab should install nginx-ingress as dependency                    | `{}`                       |
+| `certmanager.install`                  | If Gitlab should install certmanager as dependency                    | `{}`                       |
+| `certmanager-issuer.email`                  | Certmanager-issuer email                    | `""`                       |
+| `registry.storage.secret`                  | Secret name with configurations for bucket registry connection                     | See below **(1)**                       |
+| `registry.storage.key`                  | Secret key with configurations for bucket registry connection                     | See below **(1)**                       |
+| `registry.minio.s3.v4auth`                  | If bucket connection v4auth is enabled                      | `{}`                       |
+| `registry.minio.s3.pathstyle`                  | If bucket connection pathstyle is enabled                      | `{}`                       |
+| `registry.minio.s3.regionendpoint`                  | Bucket connection region endpoint                      | `""`                       |
+| `registry.minio.s3.region`                  | Bucket connection region                      | `""`                       |
+| `registry.minio.s3.bucket`                  | Bucket connection bucket name                      | `""`                       |
+| `registry.minio.s3.accesskey`                  | Bucket connection access key                      | `""`                       |
+| `registry.minio.s3.secretkey`                  | Bucket connection secret key                      | `""`                       |
+| `gitlab.toolbox.backups.objectStorage.config.secret`                  | Secret name with configurations for toolbox backups object storage                     | See below **(1)**                       |
+| `gitlab.toolbox.backups.objectStorage.config.key`                  | Secret key with configurations for toolbox backups object storage                     | See below **(1)**                       |
+
+**(1)** In this chart it was opted to have all Gitlab secrets in one single Kubernetes secret.
+
+```yml
+psql-password: gitlab-password
+email-password: email-password
+connection: |
+  provider: AWS
+  region: eu-central-1
+  aws_access_key_id: {{ .Values.dminio.auth.rootUser }} 
+  aws_secret_access_key: {{ .Values.dminio.auth.rootPassword }}
+  aws_signature_version: 4
+  host: minio.example.test
+  endpoint: "https://minio.example.test"
+  path_style: true
+redis-password: redis-password
+s3cmd-config: | 
+  access_key: {{ .Values.dminio.auth.rootUser }} 
+  secret_key: {{ .Values.dminio.auth.rootPassword }}
+  bucket_location: eu-central-1
+  multipart_chunk_size_mb: 128
+minio-credentials: |
+  access_key: {{ .Values.dminio.auth.rootUser }} 
+  secret_key: {{ .Values.dminio.auth.rootPassword }}
+registry-storage : |
+  s3:
+    v4auth: true
+    regionendpoint: "https://minio.example.test"
+    pathstyle: true
+    region: eu-central-1
+    bucket: gitlab-registry-storage
+    accesskey: {{ .Values.dminio.auth.rootUser }} 
+    secretkey: {{ .Values.dminio.auth.rootPassword }}
+ssoProvider: |
+  name: "openid_connect"
+  label: "Datalab Keycloak"
+  args: 
+    name: "openid_connect"
+    scope: ["openid","profile","email"]
+    response_type: "code"
+    issuer: "https://keycloak.example.test/auth/realms/datalab-demo"
+    discovery: false
+    client_auth_method: "query"
+    uid_field: "preferred_username"
+    client_options:
+      identifier: "gitlab-client"
+      secret: "7537870f-8e20-4065-a262-5da556549d02"
+      redirect_uri: "https://gitlab.example.test/users/auth/openid_connect/callback"
+      authorization_endpoint: "https://keycloak.example.test/auth/realms/datalab-demo/protocol/openid-connect/auth"
+      token_endpoint: "https://keycloak.example.test/auth/realms/datalab-demo/protocol/openid-connect/token"
+      userinfo_endpoint: "https://keycloak.example.test/auth/realms/datalab-demo/protocol/openid-connect/userinfo"
+      jwks_uri: "https://keycloak.example.test/auth/realms/datalab-demo/protocol/openid-connect/certs"
+      end_session_endpoint: "https://keycloak.example.test/auth/realms/datalab-demo/protocol/openid-connect/logout"
+```
+
+Having all configurations done, the Omniauth option for Single Sing-on with an external authentication provider presented an issue, where the logout action did not logout the user, once it did not delete the cookie session. To fix it, a post-install python script was developped to update the `after_sign_out_path` variable in the admin dashboard. The script simply gets the admin authenticity token and uses it to change the variable value.
+
+```python
+#!/usr/bin/python3
+"""
+Script that creates Personal Access Token for Gitlab API;
+Tested with:
+- Gitlab Community Edition 10.1.4
+- Gitlab Enterprise Edition 12.6.2
+- Gitlab Enterprise Edition 13.4.4
+"""
+import requests
+from urllib.parse import urljoin
+from bs4 import BeautifulSoup
+import datetime
+import os
+
+endpoint = "https://gitlab.example.test"
+root_route = urljoin(endpoint, "/")
+sign_in_route = urljoin(endpoint, "/users/sign_in")
+pat_route = urljoin(endpoint, "/-/profile/personal_access_tokens")
+
+login = "root"
+password = os.environ["ROOT_PASSWORD"]
+
+
+def find_csrf_token(text):
+    soup = BeautifulSoup(text, "lxml")
+    token = soup.find(attrs={"name": "csrf-token"})
+    param = soup.find(attrs={"name": "csrf-param"})
+    data = {param.get("content"): token.get("content")}
+    return data
+
+
+def obtain_csrf_token():
+    r = requests.get(root_route)
+    token = find_csrf_token(r.text)
+    return token, r.cookies
+
+
+def sign_in(csrf, cookies):
+    data = {
+        "user[login]": login,
+        "user[password]": password,
+        "user[remember_me]": 0,
+        "utf8": "✓"
+    }
+    data.update(csrf)
+    r = requests.post(sign_in_route, data=data, cookies=cookies)
+    token = find_csrf_token(r.text)
+    return token, r.history[0].cookies
+
+
+def obtain_personal_access_token(name, expires_at, csrf, cookies):
+    data = {
+        "personal_access_token[expires_at]": expires_at,
+        "personal_access_token[name]": name,
+        "personal_access_token[scopes][]": "api",
+        "utf8": "✓"
+    }
+    data.update(csrf)
+    r = requests.post(pat_route, data=data, cookies=cookies)
+    soup = BeautifulSoup(r.text, "lxml")
+    token = soup.find('input', id='created-personal-access-token').get('value')
+    return token
+
+
+def main():
+    csrf1, cookies1 = obtain_csrf_token()
+    print("root", csrf1, cookies1)
+    csrf2, cookies2 = sign_in(csrf1, cookies1)
+    print("sign_in", csrf2, cookies2)
+
+    name = "token"
+    expires_at = (datetime.date.today() + datetime.timedelta(days=1)).strftime("%d-%m-%Y")
+    token = obtain_personal_access_token(name, expires_at, csrf2, cookies2)
+    print(token)
+
+    r = requests.put("https://gitlab.example.test/api/v4/application/settings?after_sign_out_path=https://keycloak.example.test/auth/realms/datalab-demo/protocol/openid-connect/logout?redirect_uri=https://gitlab.example.test/users/sign_in", headers={'PRIVATE-TOKEN': token})
+    print(r.text)
+
+if __name__ == "__main__":
+    main()
+```
