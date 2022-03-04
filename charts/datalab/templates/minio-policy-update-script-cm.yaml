@@ -14,7 +14,6 @@ data:
     minio_access_key = os.environ['MINIO_ACCESS_KEY']
     minio_secret_key = os.environ['MINIO_SECRET_KEY']
 
-
     headers = {'Content-Type': 'application/x-www-form-urlencoded'}
     data = {'grant_type': 'password', 'username': admin_username, 'password': admin_password, 'client_id': 'admin-cli'}
     token_response = requests.post(keycloak_dns+'/auth/realms/master/protocol/openid-connect/token', data=data, headers=headers).json()
@@ -25,11 +24,15 @@ data:
 
     groupsWmembers = {}
 
+
     for group in groups_response:
-        groupsWmembers[group['name']] = []
-        members_response = requests.get(keycloak_dns+'/auth/admin/realms/datalab-demo/groups/'+group['id']+'/members', headers={'Authorization': admin_token}).json()
-        for member in members_response:
-            groupsWmembers[group['name']].append(member['username'])
+        if type(group) is dict:
+            groupsWmembers[group['name']] = []
+            members_response = requests.get(keycloak_dns+'/auth/admin/realms/datalab-demo/groups/'+group['id']+'/members', headers={'Authorization': admin_token}).json()
+            for member in members_response:
+                print(type(member) is dict)
+                if type(member) is dict:
+                    groupsWmembers[group['name']].append(member['username'])
 
     #print(groupsWmembers)
 
@@ -49,9 +52,35 @@ data:
         ]
     }
 
+    # add for demo group
+    print(base_policy)
+    with open('temp.json', 'w') as fp:
+        json.dump(base_policy, fp)
+
+
+    client = bmc.config_host_add(
+        alias='minio',
+        url=minio_dns,
+        username=minio_access_key,
+        password=minio_secret_key
+    )
+
+    bmc.admin_policy_remove(target='minio', name='demo')
+
+    print("Policy Removed! Policy Removed! Policy Removed! Policy Removed! Policy Removed! Policy Removed! Policy Removed! Policy Removed! Policy Removed! Policy Removed! Policy Removed! Policy Removed! Policy Removed! Policy Removed! Policy Removed! Policy Removed! Policy Removed! Policy Removed! Policy Removed! Policy Removed! Policy Removed! Policy Removed! Policy Removed! Policy Removed! Policy Removed! Policy Removed! Policy Removed! Policy Removed! ")
+
+    r = bmc.admin_policy_add(target='minio', name='demo', file='temp.json')
+
+    print("Base Policy Added; Will Add policies for groups now! Base Policy Added; Will Add policies for groups now! Base Policy Added; Will Add policies for groups now! Base Policy Added; Will Add policies for groups now! Base Policy Added; Will Add policies for groups now! Base Policy Added; Will Add policies for groups now! Base Policy Added; Will Add policies for groups now! Base Policy Added; Will Add policies for groups now!")
+
+    print(r.content)
 
     for group in groupsWmembers:
-        if len(groupsWmembers[group]) > 0:
+        policy_template = {
+            "Version": "2012-10-17",
+            "Statement": []
+        }
+        if len(groupsWmembers[group]) > 0 and group != "demo":
             groupPolicy = {
                 "Effect": "Allow",
                 "Action": [
@@ -68,18 +97,21 @@ data:
                     }
                 }
             }
-            base_policy["Statement"].append(groupPolicy)
+            policy_template["Statement"].append(groupPolicy)
             
-    #print(base_policy)
-    with open('temp.json', 'w') as fp:
-        json.dump(base_policy, fp)
+            print(policy_template)
+            with open('temp.json', 'w') as fp:
+                json.dump(policy_template, fp)
 
-    client = bmc.config_host_add(
-        alias='minio',
-        url=minio_dns,
-        username=minio_access_key,
-        password=minio_secret_key
-    )
+            bmc.admin_policy_remove(target='minio', name=group)
 
-    bmc.admin_policy_remove(target='minio', name='stsonly')
-    bmc.admin_policy_add(target='minio', name='stsonly', file='temp.json')
+            print("Policy Removed! From Group: " + group)
+
+            r = bmc.admin_policy_add(target='minio', name=group, file='temp.json')
+
+            print("Policy Added! From Group: " + group)
+
+            print(r.content)
+            print("##################################################")
+
+    print("Program Ended! Program Ended! Program Ended! Program Ended! Program Ended! Program Ended! Program Ended! Program Ended! Program Ended! Program Ended! Program Ended! Program Ended! Program Ended! Program Ended! Program Ended! Program Ended! Program Ended! Program Ended! Program Ended! Program Ended! Program Ended! Program Ended! Program Ended! Program Ended! Program Ended! Program Ended! Program Ended! Program Ended! Program Ended! ")

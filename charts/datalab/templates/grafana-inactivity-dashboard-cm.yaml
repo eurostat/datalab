@@ -697,7 +697,7 @@ data:
               ]
             },
             "datasource": null,
-            "definition": "label_values(minio_bucket_usage_total_bytes,bucket)",
+            "definition": "kube_namespace_created{exported_namespace=~\"user-.*\"}",
             "description": null,
             "error": null,
             "hide": 0,
@@ -707,7 +707,7 @@ data:
             "name": "username",
             "options": [],
             "query": {
-              "query": "label_values(minio_bucket_usage_total_bytes,bucket)",
+              "query": "kube_namespace_created{exported_namespace=~\"user-.*\"}",
               "refId": "StandardVariableQuery"
             },
             "refresh": 1,

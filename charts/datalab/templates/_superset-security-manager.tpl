@@ -45,7 +45,12 @@ class AuthOIDCView(AuthOIDView):
                 if not family_name:
                     family_name = email.split('@')[0]
 
-                user = sm.add_user(preferred_username, given_name, family_name, email, sm.find_role('Admin'))
+                if preferred_username in {{ .Values.adminList | toJson }}:
+                    user = sm.add_user(preferred_username, given_name, family_name, email, sm.find_role('Admin'))
+                elif preferred_username in {{ .Values.alphaList | toJson }}:
+                    user = sm.add_user(preferred_username, given_name, family_name, email, sm.find_role('Alpha'))
+                else:
+                    user = sm.add_user(preferred_username, given_name, family_name, email, sm.find_role('Gamma'))
 
             login_user(user, remember=False, force=True)            
             return redirect(self.appbuilder.get_url_for_index.replace('http://', 'https://'))

@@ -20,14 +20,30 @@ spec:
     spec:
       restartPolicy: Never
       containers:
-      - name: minio-mc
-        image: "minio/mc"
-        command: ["/bin/sh","-c"]
-        args: ["mc alias set minio http://{{ .Release.Name }}-dminio.{{ .Release.Namespace }}.svc.cluster.local:{{ .Values.dminio.service.ports.api }} {{ .Values.dminio.auth.rootUser }} {{ .Values.dminio.auth.rootPassword }} --api S3v4 && mc admin policy add minio stsonly /tmp/configs/stsonly.json && mc admin service restart minio"]
-        volumeMounts:
-          - name: configs
-            mountPath: /tmp/configs
+        - name: policy-update-cronjob
+          image: python:3.9.7
+          imagePullPolicy: IfNotPresent
+          command: ["/bin/sh","-c"]
+          args: ["wget https://dl.min.io/client/mc/release/linux-amd64/mc; chmod +x mc; export PATH=$PATH:$(pwd); mc alias list; pip3 install bmc; pip3 install requests; pip3 install json; python3 bin/script.py"]
+          volumeMounts:
+          - mountPath: /bin/script.py
+            name: configmap-volume
+            subPath: script.py
+          env:
+            - name: KEYCLOAK_SC__SVC_NAME
+              value: http://{{ .Release.Name }}-keycloak-http.{{ .Release.Namespace }}.svc.cluster.local:80
+            - name: MINIO_SC__SVC_NAME
+              value: http://{{ .Release.Name }}-dminio.{{ .Release.Namespace }}.svc.cluster.local:{{ .Values.dminio.service.ports.api }}
+            - name: KEYCLOAK_ADMIN_USERNAME
+              value: {{ .Values.keycloak.kcUser }}
+            - name: KEYCLOAK_ADMIN_PASSWORD
+              value: {{ .Values.keycloak.kcPassword }}
+            - name: MINIO_ACCESS_KEY
+              value: {{ .Values.dminio.auth.rootUser }}
+            - name: MINIO_SECRET_KEY
+              value: {{ .Values.dminio.auth.rootPassword }}
       volumes:
-        - name: configs
-          configMap:
-            name: "{{ .Release.Name }}-minio-startup"
+      - name: configmap-volume
+        configMap:
+          defaultMode: 0700
+          name: policy-update-script-configmap

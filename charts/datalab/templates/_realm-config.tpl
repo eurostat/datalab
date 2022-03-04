@@ -162,6 +162,9 @@
   "defaultRoles": [
     "user"
   ],
+  "defaultGroups": [
+    "/demo"
+  ],
   "clients": [
     {
       "clientId": "{{ .Values.onyxia.ui.env.OIDC_CLIENT_ID }}",
@@ -521,4 +524,3 @@
   ]
 }
 {{- end -}}
-
