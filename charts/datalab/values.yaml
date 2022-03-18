@@ -313,7 +313,7 @@ dminio:
   ## e.g:
   ## defaultBuckets: "my-bucket, my-second-bucket"
   ##
-  defaultBuckets: "gitlab-registry-storage, gitlab-lfs-storage, gitlab-artifacts-storage, gitlab-uploads-storage, gitlab-packages-storage, gitlab-backup-storage, gitlab-tmp-storage, gitlab-pages-storage"
+  defaultBuckets: "gitlab-registry-storage, gitlab-lfs-storage, gitlab-artifacts-storage, gitlab-uploads-storage, gitlab-packages-storage, gitlab-backup-storage, gitlab-tmp-storage, gitlab-pages-storage, public-bucket"
 
 ###############################################################################
 # Onyxia Chart configuration values (Chart version 1.3.0, inseefrlab)
@@ -543,7 +543,7 @@ vault:
       # configure the ingress to point to the Vault active service.
       activeService: true
       hosts:
-        - host: vault.example.test
+        - host: vault.clouddatalab.eu
 
     volumes:
       - name: config-vol
@@ -1235,3 +1235,22 @@ gitlab:
           config:
             secret: gitlab-secrets
             key: s3cmd-config
+
+kubernetes-dashboard:
+  ingress:
+    ## If true, Kubernetes Dashboard Ingress will be created.
+    ##
+    enabled: true
+    
+    ## Kubernetes Dashboard Ingress annotations
+    annotations:
+      kubernetes.io/ingress.class: nginx
+    ## Kubernetes Dashboard Ingress hostnames
+    ## Must be provided if Ingress is enabled
+    hosts:
+      - kubernetes-dashboard.example.test
+    ## Kubernetes Dashboard Ingress TLS configuration
+    ## Secrets must be manually created in the namespace
+    tls:
+      - hosts:
+        - kubernetes-dashboard.example.test

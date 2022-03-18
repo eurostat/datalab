@@ -36,6 +36,8 @@ data:
 
     #print(groupsWmembers)
 
+    #https://github.com/minio/minio/issues/13608
+    #https://github.com/minio/console/issues/1209
     base_policy = {
         "Version": "2012-10-17",
         "Statement": [
@@ -47,6 +49,28 @@ data:
                 "Resource": [
                     "arn:aws:s3:::${jwt:preferred_username}",
                     "arn:aws:s3:::${jwt:preferred_username}/*"
+                ]
+            },
+            {
+                "Effect": "Allow",
+                "Action": [
+                    "s3:GetObject",
+                    "s3:GetObjectVersion",
+                    "s3:ListBucket"
+                ],
+                "Resource": [
+                    "arn:aws:s3:::public-bucket/*",
+                    "arn:aws:s3:::public-bucket"
+                ]
+            },
+            {
+                "Effect": "Allow",
+                "Action": [
+                    "s3:*"
+                ],
+                "Resource": [
+                    "arn:aws:s3:::public-bucket/${jwt:preferred_username}",
+                    "arn:aws:s3:::public-bucket/${jwt:preferred_username}/*"
                 ]
             }
         ]

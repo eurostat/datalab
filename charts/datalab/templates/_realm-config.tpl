@@ -150,6 +150,14 @@
   "roles": {
     "realm": [
       {
+        "name": "ROLE_ADMIN",
+        "description": "Jhipster administrator role"
+      },
+      {
+        "name": "ROLE_USER",
+        "description": "Jhipster user role"
+      },
+      {
         "name": "user",
         "description": "User privileges"
       },
@@ -263,7 +271,23 @@
       "protocol": "openid-connect",
       "attributes": {
         "oauth2.device.authorization.grant.enabled": "true"
-      }
+      },
+      "protocolMappers": [
+        {
+          "name": "roles",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-realm-role-mapper",
+          "consentRequired": false,
+          "config": {
+            "multivalued": "true",
+            "userinfo.token.claim": "true",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "claim.name": "roles",
+            "jsonType.label": "String"
+          }
+        }
+      ]
     },
     {
       "clientId": "apache-superset",
@@ -521,6 +545,41 @@
       }
 
     }
+  ],
+ "identityProviders": [
+      {
+          "alias": "eulogin_aws",
+          "displayName": "Eulogin aws",
+          "internalId": "193a71e0-7de3-4778-8efc-d0f32bd0c386",
+          "providerId": "saml",
+          "enabled": true,
+          "updateProfileFirstLoginMode": "on",
+          "trustEmail": false,
+          "storeToken": false,
+          "addReadTokenRoleOnCreate": false,
+          "authenticateByDefault": false,
+          "linkOnly": false,
+          "firstBrokerLoginFlowAlias": "first broker login",
+          "config": {
+              "hideOnLoginPage": "",
+              "validateSignature": "true",
+              "samlXmlKeyNameTranformer": "KEY_ID",
+              "signingCertificate": "MIIGTDCCBDSgAwIBAgIQf6S1b4HXSiW/sgxzIGqlIjANBgkqhkiG9w0BAQ0FADCBmTELMAkGA1UE\nBhMCQkUxETAPBgNVBAgMCEJydXNzZWxzMREwDwYDVQQHDAhCcnVzc2VsczEcMBoGA1UECgwTRXVy\nb3BlYW4gQ29tbWlzc2lvbjEOMAwGA1UECwwFRElHSVQxNjA0BgNVBAMMLUVDQVMgTW9jay1VcCBD\nZXJ0aWZpY2F0ZSBBdXRob3JpdHkgKERldiBPbmx5KTAeFw0yMDA2MDcxNjI1NDZaFw0yMzA2MDkx\nNjI1NDZaMIGWMQswCQYDVQQGEwJCRTERMA8GA1UEBwwIQnJ1c3NlbHMxHDAaBgNVBAoME0V1cm9w\nZWFuIENvbW1pc3Npb24xDjAMBgNVBAsMBURJR0lUMSwwKgYJKoZIhvcNAQkBFh15b3VyLmVjYXMu\nbW9ja3VwQGVjLmV1cm9wYS5ldTEYMBYGA1UEAwwPZWNhcy1tb2NrdXAtc3RzMIIBojANBgkqhkiG\n9w0BAQEFAAOCAY8AMIIBigKCAYEAvSS6tPnw/xGRtxvwwxfP9/dOEkjkZmeFtZ70/AGUn47pN9oT\n2uuWRjvE9XJxEVv/lSaOmGYwo70C8PuqZMrhPcipNLFittHK9VppiwQM7CW5EUPZW3aPEMMVLK2G\n7RtlR2M0qegAz9z7ieZPiIc6gH0niKxR3ZQn6nFOlX13ocpPLW8Riz051zx/bcLyN3EopC3FAICi\nTFjhlSeFBgIzC08ffIi9pmpavpK/C6MggnmTxaOLTvsXZk9LfT36skW/d0j7yaS/O6YfvXOf2XsP\nv1jsmDerMv0JvDgUO21P4W0RpdzN5bkyjPIYwfg2PgKMxgsAjUSh2ZNXHZugyKqK8/qPKmqSOhfy\nMXv8CRoSBasSRSM2h8tao1Gez9IhP6b5cwpOjvlJYcFQgWKt5SSISSVw5jpNFju4GGRxWeW4hGXI\nhwm5RsXGr2/NDgZ9IM+MpCfYWdWsGq2eBR8mISC+q7SS3J8hvBviQEz7RQaGQJgbOQOGgjgPR9Fb\nP8kN898lAgMBAAGjggEPMIIBCzAfBgNVHSMEGDAWgBRt6mwT2uzz7Nke1ZpunjOFtrqyVTAwBgNV\nHREEKTAnggZtb2NrdXCBHXlvdXIuZWNhcy5tb2NrdXBAZWMuZXVyb3BhLmV1MBEGCWCGSAGG+EIB\nAQQEAwIE8DALBgNVHQ8EBAMCBPAwHQYDVR0OBBYEFFmjQ61P3wmihukm2DhlxfW5FwWYMAkGA1Ud\nEwQCMAAwOwYDVR0lBDQwMgYIKwYBBQUHAwEGCCsGAQUFBwMCBggrBgEFBQcDAwYIKwYBBQUHAwQG\nCCsGAQUFBwMIMC8GA1UdHwQoMCYwJKAioCCGHmh0dHBzOi8vbW9ja3VwOjcwMDIvY2FzL2NhL2Ny\nbDANBgkqhkiG9w0BAQ0FAAOCAgEAZu4nV2vi2it9aGDsdR/FjBjOrar+YcmPvP4HoM7HdcgtcW8V\nLR/eH++mT8wIkm/eGeDTuZNzCkfW+u5K4vN6ku3t1PGdl6YbtNzxkI3ms8qtFAegvzIzEicsKxu4\na3/aEPLsdFEuQN21edm7BFUGwtLtuYNuYoYU/tl8tYVbEq9nEUm9Y0cC1gl1GB7buL3RVhNBUUv2\nBNy8ZECgjebxO0tPe9KA7mGXCCTC/rsee1H/bMmHiB4k621R3Y461Z3hAxmGlw2nOBINeDMP7YXA\n5qZqklqBxWPScYg2HVldGmv28hTqkUty8aWGDnUHVe7PPdSb4AoiVbYHzRDxo9sgTmhI3b3ILZCm\nXPGuwy/BT3uu4cE/qmCGQ/EM3s2xn3v3Yn783ZuT2ip19W2eZAgoKtDEbNgvxu7B0v1cdaLBgFQG\n0HyGfi6BsC/DqCleUvv7810DxWKsAYNpEIayzsPq1BaV0GBwnriylt4R/o1PiDNQPPkl0mZptSDx\nx0pVqPMzI3NSqu3RROrKX/G8UjUflgxntvewGLvgrPcrOe4lhyXUGtZFefWdVlamcNy6kn2LTrhw\n8Okg373shXS4cbHpSAW3ZCdd00arAdpQXcfVfPG79lGHFnux2zwnRoSYVP3RAUpeOvSXMLwe5jmK\n+XqKQMusinyBQ7f6PcCECD+kL10=",
+              "postBindingLogout": "true",
+              "nameIDPolicyFormat": "urn:oasis:names:tc:SAML:2.0:nameid-format:persistent",
+              "postBindingResponse": "true",
+              "singleLogoutServiceUrl": "https://eulogin-test.wihp.ecdp.tech.ec.europa.eu/cas/logout",
+              "backchannelSupported": "",
+              "signatureAlgorithm": "RSA_SHA256",
+              "wantAssertionsEncrypted": "",
+              "useJwksUrl": "true",
+              "wantAssertionsSigned": "",
+              "postBindingAuthnRequest": "true",
+              "forceAuthn": "",
+              "singleSignOnServiceUrl": "https://eulogin-test.wihp.ecdp.tech.ec.europa.eu/cas/login",
+              "wantAuthnRequestsSigned": ""
+          }
+      }
   ]
 }
 {{- end -}}

@@ -85,7 +85,7 @@ OIDC_OPENID_REALM = 'datalab-demo'
 OIDC_INTROSPECTION_AUTH_METHOD = 'client_secret_post'
 CUSTOM_SECURITY_MANAGER = OIDCSecurityManager
 AUTH_USER_REGISTRATION = True
-AUTH_USER_REGISTRATION_ROLE = 'Gamma'
+AUTH_USER_REGISTRATION_ROLE = 'Alpha'
 '''
 --------------------------------------------------------------
 '''

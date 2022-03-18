@@ -32,5 +32,8 @@ dependencies:
 - name: gitlab
   repository: https://charts.gitlab.io
   version: 5.7.0
-digest: sha256:9e8fb938eccc0364341b83d59cd39944f9699afab07177824e7166f3219db3b6
-generated: "2022-02-25T14:12:43.800361Z"
+- name: kubernetes-dashboard
+  repository: https://kubernetes.github.io/dashboard/
+  version: 2.5.0
+digest: sha256:01b7fd5c03daf355deb1938f8a91f433fa21ea1e26864de95436480b5830d771
+generated: "2022-03-09T10:38:56.7419834Z"
