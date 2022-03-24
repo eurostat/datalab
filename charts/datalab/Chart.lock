@@ -1,7 +1,7 @@
 dependencies:
 - name: minio
   repository: https://charts.bitnami.com/bitnami
-  version: 10.1.0
+  version: 10.1.12
 - name: keycloak
   repository: https://codecentric.github.io/helm-charts
   version: 15.1.0
@@ -32,5 +32,8 @@ dependencies:
 - name: gitlab
   repository: https://charts.gitlab.io
   version: 5.7.0
-digest: sha256:2de5e17dcf072afe323ea5af5f766dd925b5de01c66006e0ddfbe56a923cf013
-generated: "2022-02-17T14:39:26.4701394Z"
+- name: kubernetes-dashboard
+  repository: https://kubernetes.github.io/dashboard/
+  version: 2.5.0
+digest: sha256:01b7fd5c03daf355deb1938f8a91f433fa21ea1e26864de95436480b5830d771
+generated: "2022-03-09T10:38:56.7419834Z"
