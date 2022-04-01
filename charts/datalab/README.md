@@ -1,4 +1,4 @@
-# Data Lab Helm Chart based on Onyxia, Keycloak, MinIO&reg;, HashiCorp's Vault, Ckan, Prometheus, Grafana and Apache Superset
+# Data Lab Helm Chart based on Onyxia, Keycloak, MinIO&reg;, HashiCorp's Vault, Ckan, Prometheus, Grafana, Apache Superset and Kubernetes Dashboard
 
 - [Onyxia](https://github.com/InseeFrLab/onyxia) is a web app that aims at being the glue between multiple open source backend technologies to provide a state of art working environnement for data scientists. Onyxia is developed by the French National institute of statistic and economic studies (INSEE).
 - [Keycloak](https://www.keycloak.org/) is a high performance Java-based identity and access management solution. It lets developers add an authentication layer to their applications with minimum effort.
@@ -11,6 +11,9 @@
 - (OPTIONAL) [Redis](https://redis.io/) is an open source (BSD licensed), in-memory data structure store, used as a database, cache, and message broker. In the context of this project ,Redis is a subdependency of various non optional charts, so it made sense to have the option of having a single central instance for it. 
 - [Apache Superset](https://superset.apache.org/) is a modern data exploration and visualization platform. For the purpose of this project it will be used as the main data visualization tool to share dashboards between users. 
 - [Gitlab](https://about.gitlab.com/) is a DevOps platform. It helps to deliver software faster with better security and collaboration in a single platform. In this project, Gitlab will serve as git collaboration tool with DevOps features available.
+- [Kubernetes Dashboard](https://kubernetes.io/docs/tasks/access-application-cluster/web-ui-dashboard/) is a web-based Kubernetes user interface. It allows the deployment of containerized applications to a Kubernetes cluster, troubleshooting your containerized application, and managing the cluster resources. You can use this Dashboard to get an overview of applications running on your cluster, as well as for creating or modifying individual Kubernetes resources. It also provides information on the state of Kubernetes resources in your cluster and on any errors that may have occurred.
+
+
 
 
 
@@ -229,14 +232,19 @@ Values for a demonstration with pre-configured users and projects (user groups):
 
 Values for the alert thresholds that will influence the rules in [this file](./templates/prometheus-rules-cm.yaml), with an informed decision about [Requests and Limits](https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/) and your own cluster resources:
 
-| Name                               |  Description                                                                                    | Value       |
-| ---------------------------------- | ----------------------------------------------------------------------------------------------- | ----------- |
-| `alertThresholds`                  | Configuration block to set-up alert thresholds for the Prometheus rules                         | see below   |
-| `alertThresholds.inactivityPeriod` | Period, e.g. in days (`d`), in which no user activity will indicate a user is inactive          | `15d`       |
-| `alertThresholds.CpuRequestQuota`  | Soft quota (i.e., an alert) for CPU cores resource request per user                             | `0.5`       |
-| `alertThresholds.MemRequestQuota`  | Soft quota (i.e., an alert) for GB of memory resource request per user                          | `4`         |
-| `alertThresholds.CpuLimitsQuota`   | Soft quota (i.e., an alert) for CPU cores resource limit per user                               | `30`        |
-| `alertThresholds.MemLimitsQuota`   | Soft quota (i.e., an alert) for GB of memory resource limit per user                            | `64`        |
+
+| Name                                           |  Description                                                                           | Value       |
+| -----------------------------------------------| ---------------------------------------------------------------------------------------| ----------- | 
+| `alertThresholds`                              | Configuration block to set-up alert thresholds for the Prometheus rules                | see below   |
+| `alertThresholds.inactivityPeriod`             | Period, e.g. in days (`d`), in which no user activity will indicate a user is inactive | `15d`       |
+| `alertThresholds.CpuRequestQuota`              | Soft quota (i.e., an alert) for CPU cores resource request per user                    | `0.5`       |
+| `alertThresholds.MemRequestQuota`              | Soft quota (i.e., an alert) for GB of memory resource request per user                 | `4`         |
+| `alertThresholds.CpuLimitsQuota`               | Soft quota (i.e., an alert) for CPU cores resource limit per user                      | `30`        |
+| `alertThresholds.MemLimitsQuota`               | Soft quota (i.e., an alert) for GB of memory resource limit per user                   | `64`        |
+| `alertThresholds.inactivityPeriodTypeDB`       | Period, e.g. in days (`d`), in which an instance of type Database is inactive          | `30`        |    
+| `alertThresholds.inactivityPeriodTypeNormal`   | Period, e.g. in days (`d`), in which an instance different than a Database is inactive | `15`        |
+| `alertThresholds.inactivityPeriodAllInstances` | Period, e.g. in days (`d`), in which any instance is inactive                          | `60`        |
+
 
 ### Onyxia
 For more information on Onyxia configurations visit the available documentation on [InseeFrLab Onyxia](https://github.com/InseeFrLab/onyxia), and take a look at the Chart on [Onyxia InseeFrLab Chart](https://github.com/InseeFrLab/helm-charts/tree/master/charts/onyxia).
@@ -269,7 +277,7 @@ Values for Onyxia UI:
 | `onyxia.ui.resources`         | Pod resources requests and limitations                               | `{}`                   |
 | `onyxia.ui.nodeSelector`      | Node selector                                                        | `{}`                   |
 | `onyxia.ui.tolerations`       | Pod tolerations                                                      | `[]`                   |
-| `onyxia.ui.affinity`          | Pod affinity, e.g. use anti afinity with `replicaCount > 1`         | `{}`                   |
+| `onyxia.ui.affinity`          | Pod affinity, e.g. use anti afinity with `replicaCount > 1`          | `{}`                   |
 | `onyxia.ui.env`               | Pod environment variables. Required to set some **(1)**              | `{}`                   |
 
 If it is pretended to achieve a datalab with a data catalog (Ckan) available, an image of `onyxia-web` should be created in order to add an interface (or a link) to connect to this data catalog. Which implies that the value of `onyxia.ui.image` should also be updated:
@@ -285,13 +293,16 @@ onyxia:
 
 **(1)** Onyxia UI environment variables to set are as follows in the example with your own domain name to enable OIDC, MINIO access, and URL for the data catalog (Ckan):
 ```yaml
-      OIDC_REALM: datalab-demo
-      OIDC_CLIENT_ID: onyxia-client
-      OIDC_URL: https://keycloak.example.test/auth
-      MINIO_URL: https://minio.example.test
-      VAULT_URL: https://vault.example.test
-      REACT_APP_DATA_CATALOG_URL: ckan
-      REACT_APP_DOMAIN_URL: example.test
+      REACT_APP_KEYCLOAK_REALM: datalab-demo
+      REACT_APP_KEYCLOAK_CLIENT_ID: onyxia-client
+      REACT_APP_KEYCLOAK_URL: https://keycloak.clouddatalab.eu/auth
+      REACT_APP_VAULT_URL: https://vault.clouddatalab.eu
+      # Defaults to OIDC_URL
+      REACT_APP_VAULT_KEYCLOAK_URL: https://keycloak.clouddatalab.eu/auth
+      # Defaults to OIDC_CLIENT_ID
+      REACT_APP_VAULT_KEYCLOAK_CLIENT_ID: onyxia-client
+      # Defaults to OIDC_REALM
+      REACT_APP_VAULT_KEYCLOAK_REALM: datalab-demo
       REACT_APP_EXTRA_LEFTBAR_ITEMS: |
         {
           "links": 
@@ -423,6 +434,8 @@ Generic
 | Name                                          |  Description                                                                    | Value                                      |
 | --------------------------------------------- | ------------------------------------------------------------------------------- | ------------------------------------------ |
 | `keycloak.replicas`                           | The number of replicas to create                                                | `1`                                        |
+| `keycloak.kcUser`                           | Set default admin username.                                                | `""`                                        |
+| `keycloak.kcPassword`                           | Set default admin password.                                                | `""`                                        |
 | `keycloak.extraEnv`                           | Additional environment variables for Keycloak                                   | `""`                                       |
 | `keycloak.rbac.create`                        | Specifies whether RBAC resources are to be created                              | `false`                                    |
 | `keycloak.rbac.rules`                         | Custom RBAC rules, e.g. for KUBE_PING                                           | `[]`                                       |
@@ -476,6 +489,7 @@ Network
 | `keycloak.ingress.rules[0].paths[0].pathType` | Path Type for the Ingress rule                                                  | `Prefix`                                   |
 | `keycloak.ingress.servicePort`                | The Service port targeted by the Ingress                                        | `http`                                     |
 | `keycloak.ingress.annotations`                | Ingress annotations                                                             | `{}`                                       |
+| `keycloak.ingress.tls[0].hosts[0]`                | Host for TLS                                                             | `{{ .Release.Name }}.keycloak.example.com`                                       |
 
 
 PostgreSQL sub-dependency can be disabled and a common PostgreSQL database can be used:
@@ -571,10 +585,6 @@ vault:
         - host: vault.example.test
     dataStorage:
       size: 5Gi
-    ha:
-      raft:
-        enabled: false
-        setNodeId: false
 ```
 
 Note that `volumes` and `volumesMounts` are declared similar to usual Kubernetes manifests. For example, it is advised to use a configmap to mount the init script with:
@@ -597,6 +607,7 @@ For an exhaustive configuration on Prometheus configurations visit the available
 | ---------------------------------------------------- | ----------------------------------------------------------------------- | ----------------------------- |
 | `prometheus.alertmanager`                            | [Altermanager](https://github.com/prometheus/alertmanager) configuration block  | See Below             |
 | `prometheus.alertmanager.enabled`                    | To enable the Prometheus Alertmanager                                   | `true`                        |
+| `prometheus.alertmanager.useClusterRole`                    | Role to enable the Prometheus Alertmanager                                   | `true`                        |
 | `prometheus.nodeExporter`                            | [NodeExporter](https://github.com/prometheus/node_exporter) configuration block  | See Below            |
 | `prometheus.nodeExporter.enabled`                    | To enable the Prometheus NodeExporter                                   | `true`                        |
 | `prometheus.pushgateway`                             | [PushGateway](https://github.com/prometheus/pushgateway) configuration block  | See Below               |
@@ -777,6 +788,7 @@ Ckan Specifications
 |------------------------------------|-----------------------------------------------------------------------------------------------|--------------------------|
 | `ckan.ckan.siteUrl`                | Url for the CKAN instance                                                                     | `"http://localhost:5000"`| 
 | `ckan.ckan.psql.initialize`        | Flag whether to initialize the PostgreSQL instance with the provided users and databases      | `true`                   | 
+| `ckan.ckan.psql.runOnAzure`    | Set to true to run on Azure (if true wont run on anything other then azure) set to false to run on other platforms.                                                       | `false`             | 
 | `ckan.ckan.psql.masterDatabase`    | PostgreSQL database for the master user                                                       | `"postgres"`             | 
 | `ckan.ckan.psql.masterPassword`    | PostgreSQL master user password                                                               | `"pass"`                 | 
 | `ckan.ckan.psql.masterUser`        | PostgreSQL master username                                                                    | `"postgres"`             | 
@@ -885,6 +897,7 @@ As for the PostgreSQL dependency usage in this context, only the following value
 | `postgresql.global.postgresql.servicePort`         | PostgreSQL port (overrides `service.port`                                                                                   | `""`  |
 | `postgresql.persistence.size`                      | PVC Storage Request for PostgreSQL volume                                                                                   | `1Gi` |
 | `postgresql.fullnameOverride`                      | String to fully override common.names.fullname template                                                                     | `""`  |
+| `postgresql.pgPass`                      | Password for the master PostgreSQL user.                                                                     | `""`  |
 | `postgresql.postgresqlPostgresPassword`            | PostgreSQL admin password (used when `postgresqlUsername` is not `postgres`, in which case`postgres` is the admin username) | `""`  |
 | `postgresql.initdbScriptsSecret`                   | Secret with scripts to be run at first boot (in case it contains sensitive information)                                     | `""`  |
 | `postgresql.initdbUser`                            | Specify the PostgreSQL username to execute the initdb scripts                                                               | `""`  |
@@ -920,10 +933,16 @@ Superset is a dependency of this Chart, created with the [Offical Superset Helm 
 | `superset.enable`                  | Enable Superset sub Chart to be launched with the rest                   | `true`                       | 
 | `superset.clientsecret`            | Client secret for the OAuth 2.0 server-side client with Keycloak         | `your-client-secret`         | 
 | `superset.flasksecret`             | Flask secret used in signing cookies                                     | `your-flask-secret`          | 
-| `superset.configSSO`               | Your Keycloak ingress (or DNS)                                           | `keycloak.example.test`      | 
+| `superset.configSSO`               | Your Keycloak ingress (or DNS)                                           | `keycloak.example.test`      |
+| `superset.adminList`               | Default list of users with admin permissions                                           | `["demo"]`      |
+| `superset.alphaList`               | Default list of users with alpha permissions                                           | `["jondoe"]`      |
 | `superset.supersetNode`            | Configuration of the superset node                                       | See below **(1)**            | 
 | `superset.postgresql.enabled`      | To enable the PostgreSQL sub-dependency                                  | `false`                      | 
-| `superset.redis.enable`            | To enable the Redis sub-dependency Chart                                 | `true`                       | 
+| `superset.redis.enable`            | To enable the Redis sub-dependency Chart                                 | `false`                       |
+| `superset.redis.auth.enable`            | Enbale access by auth to Redis Redis                                 | `""`                       |
+| `superset.redis.auth.existingSecret`            | Secret that contains the external Redis credentials                                 | `""`                       |
+| `superset.redis.auth.existingSecretKey`            | Name of the key in the existing Secret                                 | `""`                       |
+| `superset.redis.auth.password`            | External Redis auth password                                 | `""`                       |
 | `superset.redis.redisHost`         | To name the host of the launched Redis in sub-dependency                 | `datalab-redis-headless`     | 
 | `superset.redis.usePassword`       | Flag to use password in Redis authentication                             | `false`                      | 
 | `superset.extraConfigs`            | Extra configurations to be applied to Superset (e.g., allow uploads)     | See below **(2)**            | 
@@ -1053,13 +1072,13 @@ Ingress & Hosts configurations
 
 | Key                                | Description                                                              | Value                        |
 |------------------------------------|--------------------------------------------------------------------------|------------------------------|
-| `global.ingress.enabled`                  | If ingress is enabled                   | `{}`                       | 
+| `global.ingress.enabled`                  | If ingress is enabled                   | `"true"`                       | 
 | `global.ingress.class`                  | Ingress class                   | `"nginx"`                       | 
 | `global.ingress.tls.enabled`                  | If Ingress TLS is enabled                   | `true`                       | 
 | `global.ingress.tls.secretname`                  | TLS certificate secret name                   | `""`                       | 
 | `global.ingress.configureCertmanager`                  | If certmanager should be installed                   | `{}`                       | 
 | `global.hosts.domain`                  | Domain to host Gitlab                   | `""`                       | 
-| `global.hosts.https`                  | If https is enabled                   | `{}`                       | 
+| `global.hosts.https`                  | If https is enabled                   | `"true"`                       | 
 | `global.hosts.gitlab.name`                  | Gitlab hostname                   | `{}`                       | 
 | `global.hosts.gitlab.https`                  | If https is enabled                   | `{}`                       | 
 | `global.hosts.minio.name`                  | Minio hostname                   | `{}`                       | 
@@ -1069,7 +1088,9 @@ Minio bucket configurations
 
 | Key                                | Description                                                              | Value                        |
 |------------------------------------|--------------------------------------------------------------------------|------------------------------|
-| `global.mnio.enabled`                  | If Minio should be installed as Gitlab dependency                   | `{}`                       | 
+| `global.minio.enabled`                  | If Minio should be installed as Gitlab dependency                   | `"false"`                       |
+| `global.minio.credentials.secret`                  | Name of the secret that contains Minio's access credentials                   | `""`                       |
+| `global.minio.credentials.key`                  | Name of the list that contains the access_key and secret_key for the external Minio                   | `""`                       |
 | `global.registry.bucket`                  | Bucket name to store registries                   | `""`                       | 
 | `global.appConfig.lfs.bucket`                  | Bucket name to store local file storage                   | `""`                       | 
 | `global.appConfig.lfs.connection.secret`                  | Secret name with connection to Minio details                   | See below **(1)**                       | 
@@ -1313,3 +1334,20 @@ def main():
 if __name__ == "__main__":
     main()
 ```
+
+
+
+### Kubernetes Dashboard
+
+Kubernetes Dashboard is a dependency of this Chart, created with the [kubernetes-dashboard Helm Chart](https://github.com/kubernetes/dashboard/tree/master/aio/deploy/helm-chart/kubernetes-dashboard). For aditional configuration visit the [values.yaml](https://github.com/kubernetes/dashboard/blob/master/aio/deploy/helm-chart/kubernetes-dashboard/values.yaml) file of the chart.
+
+Network
+
+| Name                                                                 | Description                                                                     | Value                                                    |
+| ---------------------------------------------------------------------| ------------------------------------------------------------------------------- | ---------------------------------------------------------|
+| `kubernetes-dashboard.ingress.enabled`                               | If `true`, an Ingress is created                                                | `true`                                                   |
+| `kubernetes-dashboard.annotations.kubernetes.io/ingress.class.rules` | List of Ingress annotations                                                     | `nginx`                                                  |
+| `kubernetes-dashboard.ingress.hosts`                                 | List of hosts for the Ingress rule                                              | `[{{ .Release.Name }}.kubernetes-dashboard.example.com`] |
+| `kubernetes-dashboard.ingress.tls.hosts`                             | List of Ingress TLS configuration                                               | `[{{ .Release.Name }}.kubernetes-dashboard.example.com`] |
+
+

@@ -473,7 +473,7 @@ data:
               "value": "luismferreira"
             },
             "datasource": "Prometheus",
-            "definition": "label_values(minio_bucket_usage_total_bytes,bucket)",
+            "definition": "label_values(minio_bucket_usage_total_bytes{bucket!~\"gitlab-.*\"},bucket)",
             "description": null,
             "error": null,
             "hide": 0,
@@ -483,7 +483,7 @@ data:
             "name": "username",
             "options": [],
             "query": {
-              "query": "label_values(minio_bucket_usage_total_bytes,bucket)",
+              "query": "label_values(minio_bucket_usage_total_bytes{bucket!~\"gitlab-.*\"},bucket)",
               "refId": "StandardVariableQuery"
             },
             "refresh": 1,

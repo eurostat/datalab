@@ -711,7 +711,7 @@ data:
               "refId": "StandardVariableQuery"
             },
             "refresh": 1,
-            "regex": "",
+            "regex": "/.*exported_namespace=\"user-([^\"]*).*/",
             "skipUrlSync": false,
             "sort": 0,
             "type": "query"

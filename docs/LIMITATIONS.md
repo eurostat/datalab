@@ -8,7 +8,7 @@ Taking out the central postgres for all services and choosing to launch multiple
 
 ### Onyxia
 
-No current relevant issues.
+No current relevant issues, apart from a current [Pull Request]((https://github.com/InseeFrLab/helm-charts-datascience/pull/48)) not yet accepted. 
 
 ### Keycloak
 
@@ -22,9 +22,13 @@ Current script for policy update. It logs the Keycloak and MinIO API by the 1500
 
 Requires initialization to be done manually (this is not so much as an issue, as it is the normal (obligatory/required) workflow of Vault).
 
+### Prometheus
+
+ALerts in Inactive Instances use ingress to monitor the number of accesses in a period of time. Some instances, such as PostgreSQL, do not launch an ingress, so the admin will not receive any alerts on inactivity.
+
 ### Grafana
 
-Username list filtering is being done by the name of the buckets, and but must be switched to other mechanism, otherwise it will list group buckets and aso services buckets. Moreover, (for now) users are limited to reading dashboards so they can't create their own.
+Users are limited to reading dashboards so they can't create their own.
 
 ### Ckan
 

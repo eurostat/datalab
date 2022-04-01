@@ -38,7 +38,7 @@ data:
     EOF
 
     vault write auth/jwt/config \
-        oidc_discovery_url="https://keycloak.clouddatalab.eu/auth/realms/datalab-demo" \
+        oidc_discovery_url="https://keycloak.{{ .Values.domainName }}/auth/realms/datalab-demo" \
         default_role="onyxia-user"
 
     vault write auth/jwt/role/onyxia-user \

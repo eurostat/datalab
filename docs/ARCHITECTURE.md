@@ -34,7 +34,7 @@ In the following documentation a Kubernetes standard terminology will be used, w
 
 # High-level architecture
 The Data Lab will reside in Kubernetes, so it will be independent of the Cloud Provider. In order to provide the Data Lab, a selected number of components interact, in a high-level overview, as shown in the following diagram.
-![failed to load high-level-arch](./assets/high-level-arch.JPG)
+![high-level-arch](./assets/high-level-arch.JPG)
 
 The main component of the Data Lab is [Onyxia](https://github.com/InseeFrLab/onyxia), where users will have access to a web interface and:
 - Deploy and manage their own single-tenant services in a self-service fashion
@@ -56,9 +56,7 @@ The main component of the Data Lab is [Onyxia](https://github.com/InseeFrLab/ony
 
 [GitLab](https://about.gitlab.com/) will be the projects and code collaboration tool.
 
-
-
-
+[Kubernetes Dashboard](https://kubernetes.io/docs/tasks/access-application-cluster/web-ui-dashboard/) will be an extra tool for the platform admins to be able to interactively interact with the Kubernetes cluster.
 
 
 # Kubernetes set-up

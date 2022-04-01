@@ -19,12 +19,16 @@ demo:
   enabled: true
   users:
     - name: jondoe
+      firstname: jon
+      lastname: doe
       password: jondoe
       groups:
         - demo
         - g1
         - g2
     - name: janedoe
+      firstname: jane
+      lastname: doe
       password: janedoe
       groups:
         - demo
@@ -47,6 +51,9 @@ alertThresholds:
   MemRequestQuota: 4
   CpuLimitsQuota: 30
   MemLimitsQuota: 64
+  inactivityPeriodTypeDB: 30d
+  inactivityPeriodTypeNormal: 15d
+  inactivityPeriodAllInstances: 60d
 
 userNotification:
   enabled: false 
@@ -355,7 +362,7 @@ onyxia:
     replicaCount: 1
     image:
       name: inseefrlab/onyxia-web
-      version: latest
+      version: 0.48.10
       pullPolicy: Always
     podSecurityContext:
       {}
@@ -391,11 +398,16 @@ onyxia:
     affinity: {}
 
     env:
-      OIDC_REALM: datalab-demo
-      OIDC_CLIENT_ID: onyxia-client
-      OIDC_URL: https://keycloak.example.test/auth
-      MINIO_URL: https://minio.example.test
-      VAULT_URL: https://vault.example.test
+      REACT_APP_KEYCLOAK_REALM: datalab-demo
+      REACT_APP_KEYCLOAK_CLIENT_ID: onyxia-client
+      REACT_APP_KEYCLOAK_URL: https://keycloak.example.test/auth
+      REACT_APP_VAULT_URL: https://vault.example.test
+      # Defaults to OIDC_URL
+      REACT_APP_VAULT_KEYCLOAK_URL: https://keycloak.example.test/auth
+      # Defaults to OIDC_CLIENT_ID
+      REACT_APP_VAULT_KEYCLOAK_CLIENT_ID: onyxia-client
+      # Defaults to OIDC_REALM
+      REACT_APP_VAULT_KEYCLOAK_REALM: datalab-demo
       REACT_APP_EXTRA_LEFTBAR_ITEMS: |
         [
             {
@@ -418,7 +430,7 @@ onyxia:
     replicaCount: 1
     image:
       name: inseefrlab/onyxia-api
-      version: latest
+      version: v0.10
       pullPolicy: Always
     podSecurityContext:
       {}
@@ -543,7 +555,7 @@ vault:
       # configure the ingress to point to the Vault active service.
       activeService: true
       hosts:
-        - host: vault.clouddatalab.eu
+        - host: vault.example.test
 
     volumes:
       - name: config-vol
@@ -1006,7 +1018,9 @@ superset:
     pip install \
       psycopg2-binary==2.9.1 \
       redis==3.5.3 \
-      Flask-OIDC==1.3.0 && \
+      itsdangerous==2.0.1 \
+      Flask-OpenID==1.3.0 \
+      Flask-OIDC==1.4.0 && \
     if [ ! -f ~/bootstrap ]; then echo "Running Superset with uid 0" > ~/bootstrap; fi
 
 dredis:
@@ -1194,7 +1208,7 @@ gitlab:
         key: redis-password
 
   prometheus:
-  install: false
+    install: false
 
   postgresql:
     install: false
