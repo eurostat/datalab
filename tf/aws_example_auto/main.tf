@@ -322,7 +322,7 @@ resource "helm_release" "datalab" {
   namespace  = "default"
 
   values = [
-    "${file("../../charts/datalab/values-other-domains/values-dev.yaml")}"
+    "${file("../../charts/datalab/values.yaml")}"
   ]
 
   wait = false
