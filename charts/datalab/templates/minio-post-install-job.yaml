@@ -24,7 +24,7 @@ spec:
           image: python:3.9.7
           imagePullPolicy: IfNotPresent
           command: ["/bin/sh","-c"]
-          args: ["wget https://dl.min.io/client/mc/release/linux-amd64/mc; chmod +x mc; export PATH=$PATH:$(pwd); mc alias list; pip3 install bmc; pip3 install requests; pip3 install json; python3 bin/script.py"]
+          args: ["wget https://dl.min.io/client/mc/release/linux-amd64/mc; chmod +x mc; export PATH=$PATH:$(pwd); mc alias list; pip3 install bmc==0.0.4; pip3 install requests; pip3 install json; python3 bin/script.py"]
           volumeMounts:
           - mountPath: /bin/script.py
             name: configmap-volume

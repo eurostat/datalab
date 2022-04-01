@@ -11,6 +11,7 @@ The documentation is still in development and may be subject to future changes.
 3. [User Groups](#user-groups)
 4. [Monitoring](#monitoring)
 5. [Corrective Actions](#corrective-actions)
+6. [Interactive Operations](#interactive-operations)
 
 ## Prerequisites
 
@@ -263,3 +264,22 @@ However, overcomsumption rules are triggered by a sum of resources, so further i
 kubectl describe pod <pod-id> -n user-<username>
 ```
 The `Requests` and `Limits` section in the output can indicate how many resources are asked to be allocated to that pod, more info on the official Kubernetes documentation for [Requests and limits](https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/).
+
+## Interactive Operations
+
+Excluding the services management that can be done followed in each service pod, mainly recurring to the service CLI, all other operations on Kubernetes resources can be interactively done with the deployed Kubernetes Dashboard. If the default configurations were used when deploying the Data Lab, then a admin with access to the cluster through `kubectl` could access the dashboard, by getting the login token stored in the respective secret. The following steps will guide a admin through the process:
+
+```bash
+> kubectl get secrets -n kube-system
+NAME                                             TYPE                                  DATA   AGE
+...
+eks-admin-token-8hrq7
+...
+
+> kubectl get secret eks-admin-token-8hrq7 -n kube-system -o jsonpath='{.data.token}' | base64 --decode
+eyJhbGciOi...
+```
+
+Having the login token copied, a admin could then access the Kubernetes Dashboard in the domain used for the Data Lab deployment, and use it to login. After that, the admin should land in a page similar to the picture below, and could start interacting with any Kubernetes resources as necessary.
+
+![Kubernetes Dashboard](./assets/kubernetes-dashboard.JPG)

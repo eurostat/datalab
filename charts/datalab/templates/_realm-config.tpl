@@ -106,6 +106,8 @@
     {{- if .Values.demo.enabled -}}
     {
       "username" : "demo",
+      "firstName": "demo",
+      "lastName": "demo",
       "enabled": true,
       "email": "demo@example-demo.test",
       "credentials" : [
@@ -119,6 +121,8 @@
     {{- range .Values.demo.users }}
     ,{
       "username" : "{{ .name }}",
+      "firstName": "{{ .firstname }}",
+      "lastName": "{{ .lastname }}",
       "enabled": true,
       "email": "{{ .name }}@example-demo.test",
       "credentials" : [
@@ -175,7 +179,7 @@
   ],
   "clients": [
     {
-      "clientId": "{{ .Values.onyxia.ui.env.OIDC_CLIENT_ID }}",
+      "clientId": "{{ .Values.onyxia.ui.env.REACT_APP_KEYCLOAK_CLIENT_ID }}",
       "rootUrl": "https://datalab.{{ .Values.domainName }}",
       "baseUrl": "",
       "enabled": true,
@@ -237,7 +241,7 @@
           "protocolMapper": "oidc-audience-mapper",
           "consentRequired": false,
           "config": {
-            "included.client.audience": "{{ .Values.onyxia.ui.env.OIDC_CLIENT_ID }}",
+            "included.client.audience": "{{ .Values.onyxia.ui.env.REACT_APP_KEYCLOAK_CLIENT_ID }}",
             "id.token.claim": "false",
             "access.token.claim": "true"
           }
@@ -401,10 +405,10 @@
       "clientAuthenticatorType": "client-secret",
       "secret": "7537870f-8e20-4065-a262-5da556549d02",
       "redirectUris": [
-        "http://gitlab.{{ .Values.domainName }}/*"
+        "https://gitlab.{{ .Values.domainName }}/*"
       ],
       "webOrigins": [
-        "http://gitlab.{{ .Values.domainName }}"
+        "https://gitlab.{{ .Values.domainName }}"
       ],
       "notBefore": 0,
       "bearerOnly": false,

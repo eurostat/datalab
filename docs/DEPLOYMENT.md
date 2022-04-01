@@ -1,16 +1,18 @@
 # Deployment
 
-To deploy the current version of the Data Lab the base requirements are a Kubernetes Cluster with an ingress controller (reverse proxy), and a domain name. However, it is recommended to review all the [Prerequisites](#prerequisites) in order to ensure a proper installation of the datalab Chart. If you have already a running cluster, you can start the deployment from the [Network](#network) section, if you do not, this document also guides the deployment of one in AWS.
+To deploy the current version of the Data Lab the base requirements are a Kubernetes Cluster with an ingress controller (reverse proxy), and a domain name. However, it is recommended to review all the [Prerequisites](#prerequisites) in order to ensure a proper installation of the datalab Chart. If you have already a running cluster, you can start the deployment from the [Network](#network) section, if you do not, this document also guides the deployment of one in AWS, [manually](#data-lab-deployment) and [automatically](#data-lab-deployment-auto).
 
 The document is divided in the following parts:
 1. [Prerequisites](#Prerequisites)  
   1.1. [Kubernetes Cluster](#kubernetes-cluster)  
   1.2. [Network](#network)  
-2. [Data Lab Deployment](#data-lab-deployment)  
+2. [Data Lab Deployment - Manual](#data-lab-deployment)  
   2.1. [Helm Chart Deployment](#helm-chart-deployment)  
   2.2. [Manual Steps](#manual-steps)  
-  2.3. [Basic Operations](#basic-operations)  
-3. [Additional Configurations](#additional-configurations)
+3. [Data Lab Deployment - Automatic](#data-lab-deployment-auto)
+  3.1 [Terraform Template](#terraform-template)
+4. [Basic Operations](#basic-operations)  
+5. [Additional Configurations](#additional-configurations)
 
 ## Prerequisites
 
@@ -80,9 +82,18 @@ aws eks --region eu-central-1 update-kubeconfig --name <cluster_name>
 
 After having the Kubernetes Cluster up and running, the only steps missing are to set-up the TLS protocol, the Ingress controller and the DNS records. For that purpose, it is necessary to own a domain name.
 
-To enable the TLS protocol, we will use [Let's Encrypt](https://letsencrypt.org/) as the Certificate Authority, and [certbot](https://certbot.eff.org/) to facilitate the certificates generation. Keeping in mind that the Data Lab requires the certificate to be available in any of the generated sub-domain names, the generation of the certificate must include a wildcard name (example: *.example.test). For example, to only generate the certificate with certbot, you can do:
+To enable the TLS protocol, we will use [Let's Encrypt](https://letsencrypt.org/) as the Certificate Authority, and [certbot](https://certbot.eff.org/) to facilitate the certificates generation. This decision was made, taken into consideration cloud agnostic environment, but other Certificate Authorities can be used. For instance, one could use [AWS ACM](https://aws.amazon.com/certificate-manager/), and later the generated certificate could be referred to in the ingress controller. If the `nginx-ingress-controller` is being used, this reference could be created using the `nginx-ingress-controller` service annotations:
+
+```yaml
+annotations:
+  io/aws-load-balancer-ssl-cert: {aws_acm_certificate.arn}
 ```
-cerbot certonly --manual
+
+The same goes for any other cloud provider with equivalent services. While the next instructions used certbot, them creation of certificates in other Certificate Authorities follow similar steps.
+
+Keeping in mind that the Data Lab requires the certificate to be available in any of the generated sub-domain names, the generation of the certificate must include a wildcard name (example: *.example.test). For example, to only generate the certificate with certbot, you can do:
+```
+certbot certonly --manual
 ```
 Ensure you generate a certificate for your sub-domains too, for example: `example.test,*.example.test,*.kub.example.test`.
 
@@ -91,7 +102,7 @@ After following the instructions, set-up your Ingress controller to use your cer
 kubectl create secret tls wildcard -n ingress-nginx --key privkey.pem --cert fullchain.pem
 ```
 
-The Ingress controller will be our point of entrance, it will be done with an [NGINX Ingress controller](https://kubernetes.github.io/ingress-nginx/). We will use AWS Network Load Balancer as the Service Type Load Balancer, but this option is only available on AWS, if you want to reach an cloud agnostic Ingress Controller, you can look into other options such as [traefik](https://traefik.io/).
+The Ingress controller will be our point of entrance, it will be done with an [NGINX Ingress controller](https://kubernetes.github.io/ingress-nginx/). We will use AWS Network Load Balancer as the Service Type Load Balancer, but this option is only available on AWS, if you want to reach an cloud agnostic Ingress Controller, you can look into other options such as [traefik](https://traefik.io/) to achieve full cloud agnosticity. However, there is also the option of using NGINX Ingress controller for other cloud provider, as can be consulted [here](https://kubernetes.github.io/ingress-nginx/deploy/).
 
 The simplest way to deploy it is to use the manifest provided by [Kubernetes Community](https://kubernetes.github.io/ingress-nginx/deploy/#aws), or similar manifests that you manage on your side.
 ```
@@ -106,6 +117,7 @@ kind: Service
 metadata:
   name: ingress-nginx-controller
   namespace: ingress-nginx
+annotations: {}
 ...
 spec:
     type: LoadBalancer
@@ -135,7 +147,7 @@ spec:
 
 Finally, the domain must redirect to the ingress controller. Create a wildcard record for your previously created Service that exposes the ingress controller, for example, to expose the `NLB` create a `CNAME` record for `*.example.test` to `xxx.elb.<region>.amazonaws.com`.
 
-## Data Lab Deployment
+## Data Lab Deployment - Manual
 
 Before the actual deployment, and with the [Prerequisites](#prerequisites) covered, take into account the following points:
 - Services are generated randomly under a sub-domain `*.your-domain-name.test`, so your TLS certificate should have a wildcard
@@ -212,12 +224,43 @@ kubectl create job --from=cronjob/policy-update-cronjob immediate-policy-update
 
 If alert rules changes are required you can edit the configmap `prometheus-alerts` after or [before](../charts/datalab/templates/prometheus-rules-cm.yaml) deployment. This will trigger a reload of the configmap and the creation of the alert rules in the Prometheus server. For more information on how to write the rules, visit the official [Prometheus documentation](https://prometheus.io/docs/prometheus/latest/configuration/alerting_rules/). 
 
-### Basic Operations
+## Data Lab Deployment - Automatic
+
+To facilitate most of the configurations described in the previous section, there was also a Terraform template which was developed in order to accelerate the environment set-up. This template is mostly cloud agnostic apart from a few points. This template can be found within the source code of this project under the `tf`folder.
+
+### Terraform Template
+
+The resources that are not cloud agnostic are the following:
+
+1. [AWS EKS](https://registry.terraform.io/modules/terraform-aws-modules/eks/aws/latest)
+2. [AWS VPC](https://registry.terraform.io/modules/terraform-aws-modules/vpc/aws/latest)
+3. [AWS Route53 Record](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/route53_record)
+4. [NGINX Ingress controller](https://kubernetes.github.io/ingress-nginx/)
+
+As it should be noticeable, these resources could be adapted to any other cloud provider. AWS EKS have similar services in most cloud providers, and Terraform has resources for the majority of them, as can be consulted [here](https://learn.hashicorp.com/tutorials/terraform/kubernetes-provider).
+
+For the VPC, the situation is similar to EKS, but cloud providers have a more specific configuration fo network, which means this resource should be configured as such.
+
+In the context of DNS Providers, if they are hosted in a cloud provider, then Terraform will have resources to dynamically change them, such as [azurerm_dns_zone](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/dns_zone) for Azure. But if the domain is hosted in an external DNS Provider to the cloud, than this step can be hard to automate, however, there is still the option of taking this resource out of the template and process this step manually.
+
+Finally, the NGINX Ingress controller could be substituted by any cloud Load Balancer, be used according to the [Kubernetes environment](https://kubernetes.github.io/ingress-nginx/deploy/), or even be replaced by [traefik](https://traefik.io/), as was stated above. If it is decided to use the version of NGINX Ingress controller according to the cloud provider, the simple replacement of the helm chart for it under the folder `charts` could be made to accomplish the objective.
+
+Finally, after having all the configurations completed, and [Terraform Plan](https://www.terraform.io/cli/commands/plan) reviewed, this deployment follows the same steps as above, which means a bucket or file structure to save the [Terraform State](https://www.terraform.io/language/state) should already be in place, so that the following commands run successfully:
+
+```
+terraform init -backend-config="bucket=************" -backend-config="key=************" -backend-config="region=************"
+
+terraform apply -var-file="dev.tfvars"
+```
+
+After all the resources have been created successfully, the only remaining processes are the [Manual Steps](#manual-steps) referred in the above section. 
+
+## Basic Operations
 
 The platform administrator should have access to the admin roles in Kubernetes, Keycloak, and Grafana. With these he can monitor the usage of the platform, manage users and permissions. More information can be found in the [OPERATING.md](./OPERATING.md) documentation.
 
 
-Onyxia works with the `project` (interchangeable with `group` in the next paragraph) concept, which groups the users into shared services. MinIO and Vault also implement this in their own policies, but to ensure the policies update MinIO uses a cronjob and Vault has to be done manually as described in the previous section. This concept is implemented through the `groups` claim in the `jwt` token, which is in fact managed by Keycloak (or an external identity provider). The platform administrator with access to the identity provider is the one responsible for this group assigning, and triggering the policy change in Vault.
+Onyxia works with the `project` (interchangeable with `group` in the next paragraph) concept, which groups the users into shared services. MinIO and Vault also implement this in their own policies, but to ensure the policies update MinIO uses a cronjob and Vault has to be done manually as described in the [Manual Steps](#manual-steps) section. This concept is implemented through the `groups` claim in the `jwt` token, which is in fact managed by Keycloak (or an external identity provider). The platform administrator with access to the identity provider is the one responsible for this group assigning, and triggering the policy change in Vault.
 
 
 Quotas and thresholds for alerts can be setup in the `values.yaml`, however, it is also possible to configure them during runtime, by changing the ConfigMap `prometheus-alerts`, which in turn will be reloaded by the Prometheus server sidecar for ConfigMap reload. Note that the receiver should be the platform administrator that can then act upon the alert triggering, either by communicating with the users or by taking action in the cluster (e.g., helm uninstall of a long running inactive service).

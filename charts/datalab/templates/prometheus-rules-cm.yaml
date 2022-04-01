@@ -76,6 +76,22 @@ data:
                 description: 'Instance with ingress {{ "{{" }} $labels.ingress }} (ingress name matches pod name) might be inactive'
                 summary: 'This warning was triggered due to the intance {{ "{{" }} $labels.ingress }} not being accessed in the past {{ .Values.alertThresholds.inactivityPeriod }}. The pod CPU and network usage should be checked as well before contacting the instance creator or deleting the pod.'
               expr: (((sum (kube_ingress_created{exported_namespace=~"user-.*"} <= (time() - 300)) by (ingress) - sum (kube_ingress_created{exported_namespace=~"user-.*"} <= (time() - 300)) by (ingress))) + on(ingress) (sum(rate(nginx_ingress_controller_requests{exported_namespace=~"user-.*"}[{{ .Values.alertThresholds.inactivityPeriod }}])) by (ingress)) or on(ingress) ((sum (kube_ingress_created{exported_namespace=~"user-.*"} <= (time() - 300)) by (ingress) - sum (kube_ingress_created{exported_namespace=~"user-.*"} <= (time() - 300)) by (ingress)))) == 0
-              for: 1d
+              for: {{ .Values.alertThresholds.inactivityPeriodAllInstances }}
+              labels:
+                severity: warning
+            - alert: InstanceInactiveTypeNormalService
+              annotations:
+                description: 'Instance with ingress {{ "{{" }} $labels.ingress }} (ingress name matches pod name) might be inactive'
+                summary: 'This warning was triggered due to the intance {{ "{{" }} $labels.ingress }} not being accessed in the past {{ .Values.alertThresholds.inactivityPeriod }}. The pod CPU and network usage should be checked as well before contacting the instance creator or deleting the pod.'
+              expr: (((sum (kube_ingress_created{exported_namespace=~"user-.*",ingress=~"rstudio-.*|vscode-.*|jupyter-.*"} <= (time() - 300)) by (ingress) - sum (kube_ingress_created{exported_namespace=~"user-.*",ingress=~"rstudio-.*|vscode-.*|jupyter-.*"} <= (time() - 300)) by (ingress))) + on(ingress) (sum(rate(nginx_ingress_controller_requests{exported_namespace=~"user-.*",ingress=~"rstudio-.*|vscode-.*|jupyter-.*"}[{{ .Values.alertThresholds.inactivityPeriod }}])) by (ingress)) or on(ingress) ((sum (kube_ingress_created{exported_namespace=~"user-.*",ingress=~"rstudio-.*|vscode-.*|jupyter-.*"} <= (time() - 300)) by (ingress) - sum (kube_ingress_created{exported_namespace=~"user-.*",ingress=~"rstudio-.*|vscode-.*|jupyter-.*"} <= (time() - 300)) by (ingress)))) == 0
+              for: {{ .Values.alertThresholds.inactivityPeriodTypeNormal }}
+              labels:
+                severity: warning
+            - alert: InstanceInactiveTypeDatabase
+              annotations:
+                description: 'Instance with ingress {{ "{{" }} $labels.ingress }} (ingress name matches pod name) might be inactive'
+                summary: 'This warning was triggered due to the intance {{ "{{" }} $labels.ingress }} not being accessed in the past {{ .Values.alertThresholds.inactivityPeriod }}. The pod CPU and network usage should be checked as well before contacting the instance creator or deleting the pod.'
+              expr: (((sum (kube_ingress_created{exported_namespace=~"user-.*",ingress=~"pgadmin-.*|nocodb-.*"} <= (time() - 300)) by (ingress) - sum (kube_ingress_created{exported_namespace=~"user-.*",ingress=~"pgadmin-.*|nocodb-.*"} <= (time() - 300)) by (ingress))) + on(ingress) (sum(rate(nginx_ingress_controller_requests{exported_namespace=~"user-.*",ingress=~"pgadmin-.*|nocodb-.*"}[{{ .Values.alertThresholds.inactivityPeriod }}])) by (ingress)) or on(ingress) ((sum (kube_ingress_created{exported_namespace=~"user-.*",ingress=~"pgadmin-.*|nocodb-.*"} <= (time() - 300)) by (ingress) - sum (kube_ingress_created{exported_namespace=~"user-.*",ingress=~"pgadmin-.*|nocodb-.*"} <= (time() - 300)) by (ingress)))) == 0
+              for: {{ .Values.alertThresholds.inactivityPeriodTypeDB }}
               labels:
                 severity: warning
