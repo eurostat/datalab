@@ -16,6 +16,8 @@
     "metrics-listener",
     "jboss-logging"
   ],
+  "adminEventsEnabled": true,
+  "adminEventsDetailsEnabled": true,
   "enabledEventTypes": [
     "UPDATE_CONSENT_ERROR",
     "SEND_RESET_PASSWORD",
@@ -97,8 +99,6 @@
     "GRANT_CONSENT_ERROR",
     "IDENTITY_PROVIDER_FIRST_LOGIN_ERROR"
   ],
-  "adminEventsEnabled": false,
-  "adminEventsDetailsEnabled": false,
   "requiredCredentials": [
     "password"
   ],

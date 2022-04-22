@@ -1,0 +1,191 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: minio-cronjob-policy-update-script-configmap
+data:
+  script.py: |-
+    import os, requests, json
+    import bmc
+    import time
+    import datetime
+    from os.path import exists
+    import re
+
+    keycloak_dns = os.environ['KEYCLOAK_SC__SVC_NAME']
+    minio_dns = os.environ['MINIO_SC__SVC_NAME']
+    admin_username = os.environ['KEYCLOAK_ADMIN_USERNAME']
+    admin_password = os.environ['KEYCLOAK_ADMIN_PASSWORD']
+    minio_access_key = os.environ['MINIO_ACCESS_KEY']
+    minio_secret_key = os.environ['MINIO_SECRET_KEY']
+
+    headers = {'Content-Type': 'application/x-www-form-urlencoded'}
+    data = {'grant_type': 'password', 'username': admin_username, 'password': admin_password, 'client_id': 'admin-cli'}
+    token_response = requests.post(keycloak_dns+'/auth/realms/master/protocol/openid-connect/token', data=data, headers=headers).json()
+
+    admin_token = 'Bearer ' + token_response["access_token"]
+
+    path_timestamp = "./data/"
+    number = 0
+    if exists(path_timestamp+"timestamp.txt"):
+        f = open(path_timestamp+"timestamp.txt", "r")
+        number = re.findall(r'\b\d+\b', f.read())
+        if number:
+            number = int(number[0])
+            print(number)
+        else:
+            number = 0
+
+
+    currentDate = str(datetime.date.today())
+    tomorrowDate = str(datetime.date.today() + datetime.timedelta(1))
+
+    # response = requests.get(keycloak_dns + '/auth/admin/realms/datalab-demo/admin-events?' + 
+    #                                         'dateFrom=2022-04-05&dateTo=2022-04-06' + # from today - till the next day (future) will give only events from today
+    #                                         '&first=0&max=100' + # first - where to start; max - number of results per page # empty array if no more results
+    #                                         '&resourceTypes=USER' + # Only deletions matter; updates can't change username and creations go automatically to /demo group 
+    #                                         '&resourceTypes=GROUP' + # CREATE - Create new empty policy; UPDATE - Update policy name; DELETE - Delete policy  
+    #                                         '&resourceTypes=GROUP_MEMBERSHIP', # CREATE & DELETE -> update members of policy
+    #                                         # all types needed for update of policies 
+    #                                         headers={'Authorization': admin_token}) 
+
+    def get_events(filter):
+        incMin = 0
+        incMax = 1000
+        requestError = False 
+        totalEvents = []
+        while True:
+            response = requests.get(keycloak_dns + '/auth/admin/realms/datalab-demo/admin-events?' + 
+                                                    'dateFrom=' + currentDate + '&dateTo=' + tomorrowDate + 
+                                                    '&first=' + str(incMin) + '&max=' + str(incMax) +
+                                                    '&resourceTypes=' + filter, 
+                                                    headers={'Authorization': admin_token}) 
+            
+            events = response
+            if response.status_code == 200:
+                events = response.json()
+                print(events)
+            else:
+                requestError = True
+                print("Error on request: ")
+                print(response)
+                break
+
+            if len(events) < 1000:
+                totalEvents = totalEvents + events
+                break
+            else:
+                totalEvents = totalEvents + events
+                incMin = incMax
+                incMax = incMax + incMax
+        
+        if requestError:
+            return False
+        else:
+            return totalEvents
+
+    def execute_actions(actions):
+        client = bmc.config_host_add(
+            alias='minio',
+            url=minio_dns,
+            username=minio_access_key,
+            password=minio_secret_key
+        )
+
+        for el in actions:
+            print("####################################################")
+            if el['operation'] == 1:
+                groupPolicy = {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Effect": "Allow",
+                            "Action": [
+                                "s3:*"
+                            ],
+                            "Resource": [
+                                "arn:aws:s3:::projet-"+el['name'],
+                                "arn:aws:s3:::projet-"+el['name']+"/*"
+                            ]
+                        }
+                    ]
+                }
+                with open('temp.json', 'w') as fp:
+                    json.dump(groupPolicy, fp)
+                r = bmc.admin_policy_add(target='minio', name=el['name'], file='temp.json')
+                print("Policy Added! From Group: " + el['name'])
+                print(r)
+                print("##################################################")
+            elif el['operation'] == 2:
+                r = bmc.admin_policy_remove(target='minio', name=el['old_name'])
+                print("Policy Removed! From Group: " + el['old_name'])
+                print(r)
+                print("##################################################")
+                groupPolicy = {
+                    "Effect": "Allow",
+                    "Action": [
+                        "s3:*"
+                    ],
+                    "Resource": [
+                        "arn:aws:s3:::projet-"+el['name'],
+                        "arn:aws:s3:::projet-"+el['name']+"/*"
+                    ]
+                }
+                with open('temp.json', 'w') as fp:
+                    json.dump(groupPolicy, fp)
+                r = bmc.admin_policy_add(target='minio', name=el['name'], file='temp.json')
+                print("Policy Added! From Group: " + el['name'])
+                print(r)
+                print("##################################################")
+            elif el['operation'] == 3:
+                r = bmc.admin_policy_remove(target='minio', name=el['name'])
+                print("Policy Added! From Group: " + el['name'])
+                print(r.content)
+                print("##################################################")
+
+    if __name__ == '__main__':
+        actions = []
+        
+        print("WILL RETRIEVE GROUPS EVENTS...")
+        events = get_events("GROUP")
+        print("GROUPS EVENTS RETRIEVED...")
+        # search seperately
+        # CREATE 
+        # create policy
+        # UPDATE 
+        # change policy name (delete -> create new)
+        # DELETE
+        # delete policy
+        print(events)
+        if events:
+            for el in events:
+                newAction = {}
+                newAction['priority'] = el['time']
+                el['representation'] = json.loads(el['representation'])
+                if el['operationType'] == "CREATE":
+                    newAction['operation'] = 1
+                    newAction['name'] = el['representation']['name']
+                elif el['operationType'] == "UPDATE":
+                    newAction['operation'] = 2
+                    newAction['old_name'] = el['representation']['path'].replace("/", "")
+                    newAction['name'] = el['representation']['name']
+                elif el['operationType'] == "DELETE":
+                    newAction['operation'] = 3
+                    newAction['name'] = el['representation']['name']
+                actions.append(newAction)
+
+        print("ACTIONS CONVERTED...")
+        print("ACTIONS WILL START...")
+
+        # sort by priority
+        actions = sorted(actions, key=lambda d: d['priority'])
+        actions = [ii for ii in actions if ii['priority'] > number]
+        execute_actions(actions)
+
+        if actions:
+            f = open(path_timestamp+"timestamp.txt", 'w')
+            f.write(str(actions[-1]['priority']))
+            f.close()
+
+        print("ACTIONS EXECUTED...")
+
+        print("Program Ended! Program Ended! Program Ended!")

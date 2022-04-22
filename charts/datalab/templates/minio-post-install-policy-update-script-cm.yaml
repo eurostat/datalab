@@ -1,0 +1,116 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: minio-post-install-policy-update-script-configmap
+data:
+  script.py: |-
+    import os, requests, json
+    import bmc
+
+    keycloak_dns = os.environ['KEYCLOAK_SC__SVC_NAME']
+    minio_dns = os.environ['MINIO_SC__SVC_NAME']
+    admin_username = os.environ['KEYCLOAK_ADMIN_USERNAME']
+    admin_password = os.environ['KEYCLOAK_ADMIN_PASSWORD']
+    minio_access_key = os.environ['MINIO_ACCESS_KEY']
+    minio_secret_key = os.environ['MINIO_SECRET_KEY']
+    
+    headers = {'Content-Type': 'application/x-www-form-urlencoded'}
+    data = {'grant_type': 'password', 'username': admin_username, 'password': admin_password, 'client_id': 'admin-cli'}
+    token_response = requests.post(keycloak_dns+'/auth/realms/master/protocol/openid-connect/token', data=data, headers=headers).json()
+
+    admin_token = 'Bearer ' + token_response["access_token"]
+
+    groups_response = requests.get(keycloak_dns+'/auth/admin/realms/datalab-demo/groups', headers={'Authorization': admin_token}).json()
+
+    #https://github.com/minio/minio/issues/13608
+    #https://github.com/minio/console/issues/1209
+    base_policy = {
+        "Version": "2012-10-17",
+        "Statement": [
+            {
+                "Effect": "Allow",
+                "Action": [
+                    "s3:*"
+                ],
+                "Resource": [
+                    "arn:aws:s3:::${jwt:preferred_username}",
+                    "arn:aws:s3:::${jwt:preferred_username}/*"
+                ]
+            },
+            {
+                "Effect": "Allow",
+                "Action": [
+                    "s3:GetObject",
+                    "s3:GetObjectVersion",
+                    "s3:ListBucket"
+                ],
+                "Resource": [
+                    "arn:aws:s3:::public-bucket/*",
+                    "arn:aws:s3:::public-bucket"
+                ]
+            },
+            {
+                "Effect": "Allow",
+                "Action": [
+                    "s3:*"
+                ],
+                "Resource": [
+                    "arn:aws:s3:::public-bucket/${jwt:preferred_username}",
+                    "arn:aws:s3:::public-bucket/${jwt:preferred_username}/*"
+                ]
+            }
+        ]
+    }
+
+    # add for demo group
+    print(base_policy)
+    with open('temp.json', 'w') as fp:
+        json.dump(base_policy, fp)
+
+
+    client = bmc.config_host_add(
+        alias='minio',
+        url=minio_dns,
+        username=minio_access_key,
+        password=minio_secret_key
+    )
+
+
+    r = bmc.admin_policy_add(target='minio', name='demo', file='temp.json')
+
+    print("Base Policy Added; Will Add policies for groups now! Base Policy Added; Will Add policies for groups now! Base Policy Added; Will Add policies for groups now! Base Policy Added; Will Add policies for groups now! Base Policy Added; Will Add policies for groups now! Base Policy Added; Will Add policies for groups now! Base Policy Added; Will Add policies for groups now! Base Policy Added; Will Add policies for groups now!")
+
+    print(r.content)
+
+    for group in groups_response:
+        if group['name'] != "demo":
+            policy_template = {
+                "Version": "2012-10-17",
+                "Statement": [
+                    {
+                        "Effect": "Allow",
+                        "Action": [
+                            "s3:*"
+                        ],
+                        "Resource": [
+                            "arn:aws:s3:::projet-"+group['name'],
+                            "arn:aws:s3:::projet-"+group['name']+"/*"
+                        ]
+                    }
+                ]
+            }        
+            with open('temp.json', 'w') as fp:
+                json.dump(policy_template, fp)
+
+            bmc.admin_policy_remove(target='minio', name=group['name'])
+
+            print("Policy Removed! From Group: " + group['name'])
+
+            r = bmc.admin_policy_add(target='minio', name=group['name'], file='temp.json')
+
+            print("Policy Added! From Group: " + group['name'])
+
+            print(r.content)
+            print("##################################################")
+
+    print("Program Ended! Program Ended! Program Ended! Program Ended! Program Ended! Program Ended! Program Ended! Program Ended! Program Ended! Program Ended! Program Ended! Program Ended! Program Ended! Program Ended! Program Ended! Program Ended! Program Ended! Program Ended! Program Ended! Program Ended! Program Ended! Program Ended! Program Ended! Program Ended! Program Ended! Program Ended! Program Ended! Program Ended! Program Ended! ")

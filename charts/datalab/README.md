@@ -1,4 +1,4 @@
-# Data Lab Helm Chart based on Onyxia, Keycloak, MinIO&reg;, HashiCorp's Vault, Ckan, Prometheus, Grafana, Apache Superset and Kubernetes Dashboard
+# Data Lab Helm Chart based on Onyxia, Keycloak, MinIO&reg;, HashiCorp's Vault, Ckan, Prometheus, Grafana, Apache Superset, Gitlab and Kubernetes Dashboard
 
 - [Onyxia](https://github.com/InseeFrLab/onyxia) is a web app that aims at being the glue between multiple open source backend technologies to provide a state of art working environnement for data scientists. Onyxia is developed by the French National institute of statistic and economic studies (INSEE).
 - [Keycloak](https://www.keycloak.org/) is a high performance Java-based identity and access management solution. It lets developers add an authentication layer to their applications with minimum effort.
@@ -18,45 +18,6 @@
 
 
 **Disclaimer**: All software products, projects and company names are trademark&trade; or registered&reg; trademarks of their respective holders, and use of them does not imply any affiliation or endorsement. Keycloak is licensed under Apache License v2.0. MinIO&reg; is licensed under GNU AGPL v3.0. HashiCorp's Vault Chart is licensed under MPL-2.0 License. Grafana is licensed under GNU AGPL v3.0. Prometheus is licensed under Apache License v2.0. Ckan is licensed under GNU AGPL v3.0. Redis is BSD licensed and Gitlab is MIT licensed.
-
-## TL;DR
-```
-helm repo add eurostat-datalab https://eurostat.github.io/datalab/
-helm repo update
-helm show values eurostat-datalab/datalab > values.yaml
-```
-
-**IMPORTANT**: create your own `values.yaml` based on the default `values.yaml` with your domain name, SMTP server, and passwords.
-
-> **ATTENTION** ensure you do not commit your `values.yaml` with secrets to the SCM.
-
-```
-helm upgrade --install datalab eurostat-datalab/datalab -f values.yaml --wait
-```
-
-After successful installation, configure HashiCorp's Vault to be used by Onyxia and Keycloak `jwt` authentication.
-```bash
-kubectl exec --stdin --tty datalab-vault-0 -- /bin/sh
-
-# inside the pod... place both to 1 in development for ease of use
-vault operator init -key-shares=5 -key-threshold=3
-
-# ******************** IMPORTANT ******************** 
-# Get Unseal Key shares and root token: keep them SAFE!
-# ******************** IMPORTANT ********************
-
-vault operator unseal # key share 1
-vault operator unseal # key share 2
-vault operator unseal # key share 3
-
-# Run the mounted configmap with the root-token as env var
-VAULT_TOKEN=<root-token> ./vault/scripts/configscript.sh
-```
-
-And enable CORS for Onyxia access.
-```
-curl --header "X-Vault-Token: <root-token>" --request PUT --data '{"allowed_origins": ["https://datalab.example.test", "https://vault.example.test" ]}'  https://vault.example.test/v1/sys/config/cors
-```
 
 ## Introduction
 

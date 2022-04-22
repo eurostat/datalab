@@ -36,4 +36,7 @@ spec:
           - name: configmap-volume
             configMap:
               defaultMode: 0700
-              name: policy-update-script-configmap
+              name: minio-cronjob-policy-update-script-configmap
+          - name: application-code
+            persistentVolumeClaim:
+              claimName: application-data-pv-claim
