@@ -16,7 +16,13 @@ The user and group management UI may not be as functional as desired when adding
 
 ### MinIO
 
-Current script for policy update. It logs the Keycloak and MinIO API by the 1500th policy. It must be transformed into a reactive script, reactive to Keycloak's events. On user deleted/added update policies of groups where user was member, including the demo group (for private bucket policy). Also, update on membership of groups changing! And on username change. (?)
+MinIO policies limits are no longer an issue. By having a script that updates policies according to Keycloak's admin events, the MinIO policies can keep up with dozens of thousands of users. After stress testing, a limit where this feature was compromised was not found. Either way, it is still **not** advised to make all actions at once, meaning the user creation and deletion, groups creation, update and deletion, plus group membership creation and deletion, should not be all done at once, but in batches. Theses batches should consist of around hundreds of actions to ensure the expected behaviour of this feature. Each batch is executed according to the `autoUpdatePolicy.schedule` value in the `values.yaml` file, which can easily be configured.
+
+MinIO has still one known limitation on the Data Lab installation. MinIO will most times be wrongly configured with Keycloak's SSO, once it starts and stops looking for an SSO provider, before Keycloak is fully ready. This issue is difficult to manage once these processes are intrinsic to the MinIO image, so the solution of creating a new MinIO image would be arduous and time-consuming. On that account, we opted to compromise the user with another command to run while initializing the Data Lab for a simpler fix, which is to restart the MinIO deployment with the following command:
+
+```bash
+> kubectl rollout restart deploy datalab-dminio 
+``` 
 
 ### Vault
 

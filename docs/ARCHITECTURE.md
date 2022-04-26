@@ -15,7 +15,9 @@ The documentation is still in development and may be subject to future changes.
     1.4. [Secrets management](#secrets-management)  
     1.5. [Monitoring](#monitoring)  
     1.6. [Data Visualisation](#data-visualisation)  
+    1.7. [Collaboration tools](#collaboration-tools)
     1.7. [Collaboration tools](#collaboration-tools)  
+    1.8. [Admin Area](#admin-area)
 
 
 
@@ -284,3 +286,10 @@ Authentication should be provided by Keycloak with industry standard OpenID Conn
 
 > This configurations should be automated during launching of the Data Lab service, for more information consult the [Chart README](../charts/datalab/README.md) document. 
 
+<br>
+
+## Admin Area
+### Kubernetes Dashboard
+The Kubernetes Dashboard will be an extra tool for the platform admins to be able to interact with the Kubernetes cluster, in addition to the Kubernetes CLI.
+<br>The integration of this tool in the Datalab is optional,  and doesn't require much configuration. For further details on this chart's configuration, consult the [Chart README](../charts/datalab/README.md) document. 
+In orther to understand how to access this tool, consult the [OPERATING](../docs/OPERATING.md) document. 

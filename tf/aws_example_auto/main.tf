@@ -19,6 +19,7 @@ locals {
   name            = "${var.CLUSTER_PREFIX}-eks-lab"
   cluster_version = "1.20"
   region          = var.AWS_REGION
+  datalab_values_aux  = replace("${file("${var.PATH_TO_DATALAB_VALUES}")}","example.test","${var.DOMAIN_NAME}")
 }
 
 ################################################################################
@@ -201,27 +202,30 @@ provider "helm" {
 }
 
 
- provider "acme" {
-    server_url = "https://acme-v02.api.letsencrypt.org/directory"
- }
-
 data "aws_route53_zone" "validation" {
-  name = "${var.DOMAINNAME}"
+  name = "${var.DOMAIN_NAME_HOSTED_ZONE}"
+}
+
+provider "acme" {
+   server_url = "https://acme-v02.api.letsencrypt.org/directory"
 }
 
 resource "tls_private_key" "private_key" {
+  count = var.PATH_TO_CERTIFICATE_CRT == "" ? 1 : 0
   algorithm = "RSA"
 }
 
 resource "acme_registration" "registration" {
-  account_key_pem = "${tls_private_key.private_key.private_key_pem}"
+  count = var.PATH_TO_CERTIFICATE_CRT == "" ? 1 : 0
+  account_key_pem = "${tls_private_key.private_key[0].private_key_pem}"
   email_address   = "${var.EMAIL}"
 }
 
 resource "acme_certificate" "certificate" {
-  account_key_pem           = "${acme_registration.registration.account_key_pem}"
-  common_name               = "${var.DOMAIN_NAME_PREFIX}.${var.DOMAINNAME}"
-  subject_alternative_names = ["*.${var.DOMAIN_NAME_PREFIX}.${var.DOMAINNAME}"]
+  count = var.PATH_TO_CERTIFICATE_CRT == "" ? 1 : 0
+  account_key_pem           = "${acme_registration.registration[0].account_key_pem}"
+  common_name               = "${var.DOMAIN_NAME}"
+  subject_alternative_names = ["*.${var.DOMAIN_NAME}"]
   
 
   dns_challenge {
@@ -232,9 +236,8 @@ resource "acme_certificate" "certificate" {
     }
   }
 
-  depends_on = [acme_registration.registration]
+  depends_on = [acme_registration.registration[0]]
 }
-
 
 resource "helm_release" "ingress" {
   name       = "nginx-controller"
@@ -243,7 +246,7 @@ resource "helm_release" "ingress" {
   create_namespace = true
 
   values = [
-    "${file("../../charts/ingress-nginx/values.yaml")}"
+    "${file("${var.PATH_TO_NGINX_CONTROLLER_VALUES}")}"
   ]
 
   set {
@@ -256,7 +259,7 @@ resource "helm_release" "ingress" {
     value = local.name
   }
 
-  depends_on = [module.eks]
+  depends_on = [module.eks, acme_certificate.certificate]
 }
 
 resource "kubernetes_secret" "secretTLS" {
@@ -264,11 +267,10 @@ resource "kubernetes_secret" "secretTLS" {
     name = "wildcard"
     namespace = "ingress-nginx"
   }
-  
 
-  data = {
-    "tls.crt" = "${lookup(acme_certificate.certificate, "certificate_pem")}"
-    "tls.key" = "${lookup(acme_certificate.certificate, "private_key_pem")}"
+   data = {
+    "tls.crt" = var.PATH_TO_CERTIFICATE_CRT == "" ? format("%s%s", acme_certificate.certificate[0].certificate_pem, acme_certificate.certificate[0].issuer_pem) : "${file("${var.PATH_TO_CERTIFICATE_CRT}")}"
+    "tls.key" = var.PATH_TO_CERTIFICATE_KEY == "" ? "${acme_certificate.certificate[0].private_key_pem}" : "${file("${var.PATH_TO_CERTIFICATE_KEY}")}"
   }
 
   type = "kubernetes.io/tls"
@@ -287,7 +289,7 @@ data "kubernetes_service" "example" {
 
 #resource "aws_route53_record" "example" {
 #  zone_id = "${data.aws_route53_zone.validation.zone_id}"
-#  name    = "${var.DOMAIN_NAME_PREFIX}.${var.DOMAINNAME}"
+#  name    = "${var.DOMAIN_NAME_PREFIX}.${var.DOMAIN_NAME}"
 #  type    = "A"
 #  #ttl     = "300"
 #
@@ -305,7 +307,7 @@ data "kubernetes_service" "example" {
 
 resource "aws_route53_record" "example2" {
   zone_id = "${data.aws_route53_zone.validation.zone_id}"
-  name    = "*.${var.DOMAIN_NAME_PREFIX}.${var.DOMAINNAME}"
+  name    = "*.${var.DOMAIN_NAME}"
   type    = "CNAME"
   ttl     = "300"
   records = [data.kubernetes_service.example.status.0.load_balancer.0.ingress.0.hostname]
@@ -318,11 +320,12 @@ resource "aws_route53_record" "example2" {
 
 resource "helm_release" "datalab" {
   name       = "datalab"
-  chart      = "../../charts/datalab"
+  chart      = "${var.PATH_TO_DATALAB_CHART}"
   namespace  = "default"
+  timeout    = 480 
 
   values = [
-    "${file("../../charts/datalab/values.yaml")}"
+    local.datalab_values
   ]
 
   wait = false
@@ -332,6 +335,3 @@ resource "helm_release" "datalab" {
   #depends_on = [aws_route53_record.example, aws_route53_record.example2]
   depends_on = [aws_route53_record.example2]
 }
-
-
-

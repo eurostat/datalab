@@ -12,7 +12,7 @@ smtpServer: |-
     "from": "",
     "fromDisplayName": "",
     "ssl": "",
-    "user": "test-user@example.test"
+    "user": "test-user@example.mail.test"
   }
 
 demo:
@@ -66,7 +66,7 @@ userNotification:
     labels: {}
     podAnnotations: {}
     podLabels: {}
-    containerImage: TODO
+    containerImage: # placeHolder1 # TODO
     imagePullPolicy: Always
     ports: |
       - containerPort: 9992
@@ -80,7 +80,7 @@ userNotification:
       - name: KEYCLOAK_ADMIN_PASSWORD
         value: TODO
       - name: SMTP_USERNAME
-        value: test-user@example.test
+        value: test-user@example.mail.test
       - name: SMTP_PASSWORD
         value: TODO
       - name: SMTP_SERVER
@@ -202,7 +202,7 @@ keycloak:
 
   extraContainers: |
     - name: keycloak-event-metrics-sidecar
-      image: TODO
+      image: # placeHolder2 # TODO
       imagePullPolicy: IfNotPresent
       env:
         - name: KEYCLOAK_SC__SVC_NAME
@@ -614,9 +614,9 @@ dprometheus:
         resolve_timeout: 5m
         http_config:
           follow_redirects: true
-        smtp_from: example.test@example.test
+        smtp_from: test-user@example.mail.test
         smtp_smarthost: smtp.example.test:587
-        smtp_auth_username: example.test@example.test
+        smtp_auth_username: test-user@example.mail.test
         smtp_auth_password: example-password
         smtp_require_tls: true
       route:
@@ -741,8 +741,8 @@ ckan:
   clientsecret: your-client-secret
 
   image:
-    repository: # (TODO) place your own image here! 
-    tag: latest
+    repository: # placeHolder3.1 # (TODO) place your own image here! 
+    tag: # placeHolder3.2 # latest
     pullPolicy: Always
   
   # DBDeploymentName -- Variable for name override for postgres deployment
