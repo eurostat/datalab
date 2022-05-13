@@ -19,7 +19,8 @@ locals {
   name            = "${var.CLUSTER_PREFIX}-eks-lab"
   cluster_version = "1.20"
   region          = var.AWS_REGION
-  datalab_values_aux  = replace("${file("${var.PATH_TO_DATALAB_VALUES}")}","example.test","${var.DOMAIN_NAME}")
+  datalab_values_aux  = replace("${file("${var.PATH_TO_DATALAB_VALUES}")}","clouddatalab.eu","${var.DOMAIN_NAME}")
+  datalab_values  = replace("${local.datalab_values_aux}","/${var.DOMAIN_NAME}@gmail.com/","${var.EMAIL}")
 }
 
 ################################################################################
