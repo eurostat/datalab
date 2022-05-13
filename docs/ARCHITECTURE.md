@@ -60,6 +60,17 @@ The main component of the Data Lab is [Onyxia](https://github.com/InseeFrLab/ony
 
 [Kubernetes Dashboard](https://kubernetes.io/docs/tasks/access-application-cluster/web-ui-dashboard/) will be an extra tool for the platform admins to be able to interactively interact with the Kubernetes cluster.
 
+## AWS architecture
+When deploying the data lab in AWS, this is the high-level architecture:
+![datalab_aws.drawio](./assets/datalab_aws.drawio.png)
+
+The following AWS services are used:
+- AWS VPC
+- Route 53
+- Load balancer
+- EKS
+- Nat gateway
+- Private and public subnets
 
 # Kubernetes set-up
 If setting up the Kubernetes cluster on-premises, do not take into account the Availability Zones mentions during this section. Ensure that you are able to expose the IP or DNS of the load balancer on your reverse proxy and create the CNAME as mentioned in the [DEPLOYMENT](./DEPLOYMENT.md) document.
