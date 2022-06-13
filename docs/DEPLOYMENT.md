@@ -155,6 +155,7 @@ supersetNode:
     db_name: superset
 ...
 ```
+In order to perform the commands in the future sections, [AWS CLI](https://aws.amazon.com/cli/) (for AWS deployments, [Terraform CLI](https://learn.hashicorp.com/tutorials/terraform/install-cli) and [Helm CLI](https://helm.sh/docs/intro/install/) are needed.
 <br>
 The following sections aim to cover the hard requirements and the installation of the Chart.
 <br>
