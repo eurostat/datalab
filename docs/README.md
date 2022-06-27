@@ -13,4 +13,4 @@ The Data Lab documentation is in development and divided into the following sect
 - [Data Lab External Images](./EXTERNAL-IMAGES.md)
 
 ## :warning: Disclaimer :warning:
-The documentation is still in development.
+The documentation is subject to future changes.
