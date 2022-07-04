@@ -1000,6 +1000,8 @@ superset:
     proxy_https: |
       ENABLE_PROXY_FIX = True
       PREFERRED_URL_SCHEME = 'https'
+      
+  configOverridesFiles: {}
 
   extraVolumes:
     - name: clientsecret
