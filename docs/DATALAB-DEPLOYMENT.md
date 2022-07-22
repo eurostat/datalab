@@ -201,8 +201,7 @@ If you wish to change the release name to other than `datalab`, please change th
 
 ## Initialize Vault
 
-After successful installation, configure HashiCorp's Vault to be used by Onyxia and Keycloak `jwt` authentication. Do not forget to change `YOUR-RELEASE-NAME` to your chosen release name.
-
+After successful installation, configure HashiCorp's Vault to be used by Onyxia and Keycloak `jwt` authentication. 
 ```bash
 kubectl exec --stdin --tty datalab-vault-0 -- /bin/sh
 
@@ -230,7 +229,7 @@ curl --header "X-Vault-Token: <root-token>" --request PUT --data '{"allowed_orig
 MinIO has some trouble configuring all authentication and policies services, so most times the deployment responsible form MinIO should be restarted in order to re-establish all configurations necessary.
 
 ```bash
-kubectl rollout restart deploy {{ .Release.Name }}-dminio
+kubectl rollout restart deploy datalab-dminio
 ```
 
 ## Set roles permissions on Superset
