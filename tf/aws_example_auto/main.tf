@@ -318,20 +318,20 @@ resource "aws_route53_record" "example2" {
 }
 
 
-resource "helm_release" "datalab" {
-  name       = "datalab"
-  chart      = "${var.PATH_TO_DATALAB_CHART}"
-  namespace  = "default"
-  timeout    = 480 
-
-  values = [
-    local.datalab_values
-  ]
-
-  wait = false
-  force_update = true
-  
-  
-  #depends_on = [aws_route53_record.example, aws_route53_record.example2]
-  depends_on = [aws_route53_record.example2]
-}
+#resource "helm_release" "datalab" {
+#  name       = "datalab"
+#  chart      = "${var.PATH_TO_DATALAB_CHART}"
+#  namespace  = "default"
+#  timeout    = 480 
+#
+#  values = [
+#    local.datalab_values
+#  ]
+#
+#  wait = false
+#  force_update = true
+#  
+#  
+#  #depends_on = [aws_route53_record.example, aws_route53_record.example2]
+#  depends_on = [aws_route53_record.example2]
+#}
