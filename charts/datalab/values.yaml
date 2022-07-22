@@ -199,22 +199,22 @@ keycloak:
       volumeMounts:
         - name: deployments
           mountPath: /deployments
-
-  extraContainers: |
-    - name: keycloak-event-metrics-sidecar
-      image: # placeHolder2 # TODO
-      imagePullPolicy: IfNotPresent
-      env:
-        - name: KEYCLOAK_SC__SVC_NAME
-          value: http://localhost:8080
-        - name: KEYCLOAK_ADMIN_USERNAME
-          value: TODO
-        - name: KEYCLOAK_ADMIN_PASSWORD
-          value: TODO
-      ports:
-        - containerPort: 9991
-          name: event-sidecar
-          protocol: TCP
+### TO DEPLOY WITH THE KEYCLOAK-EVENT-METRICS-SIDECAR, UNCOMMNENT IT AND PUT THE IMAGE URL
+  #extraContainers: |
+  #  - name: keycloak-event-metrics-sidecar
+  #    image: # placeHolder2 # TODO
+  #    imagePullPolicy: IfNotPresent
+  #    env:
+  #      - name: KEYCLOAK_SC__SVC_NAME
+  #       value: http://localhost:8080
+  #      - name: KEYCLOAK_ADMIN_USERNAME
+  #        value: TODO
+  #      - name: KEYCLOAK_ADMIN_PASSWORD
+  #        value: TODO
+  #    ports:
+  #      - containerPort: 9991
+  #        name: event-sidecar
+  #        protocol: TCP
 
   service:
     annotations:
