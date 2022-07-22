@@ -109,4 +109,4 @@ aws eks --region eu-central-1 update-kubeconfig --name <cluster_name>
 
 > There are numerous advantages of having the EKS cluster being created and deleted continuously during the development stage on-off hours (off work schedule), the most important being the reduction of costs. To achieve this workflow, you can take a look at the automatic procedure to start the EKS cluster by 8h00 (GMT) and delete it by 19h00 (GMT) from Monday to Friday in [`.github/example_workflows`](../.github/example_workflows).
 
-After all the resources have been created successfully, the data lab is ready to be deployed following [the Data lab installation documentation](DATALAB-INIT.md).
+After all the resources have been created successfully, the data lab is ready to be deployed following [the Data lab installation documentation](DATALAB-DEPLOYMENT.md).
