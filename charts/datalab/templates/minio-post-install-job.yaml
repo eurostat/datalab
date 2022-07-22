@@ -46,4 +46,5 @@ spec:
       - name: configmap-volume
         configMap:
           defaultMode: 0700
-          name: policy-update-script-configmap
+          name: minio-post-install-policy-update-script-configmap
+    backoffLimit: 10
