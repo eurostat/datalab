@@ -131,6 +131,26 @@ ckan:
     pullPolicy: Always
 ...
 ```
+If you want to measure user activity based on Keycloak events, after you create your own Keycloak Sidecar metrics image, you need to uncomment the section below and replace the placeholders.
+```yaml
+...
+  extraContainers: |
+    - name: keycloak-event-metrics-sidecar
+      image: #TODO #placeholder
+      imagePullPolicy: IfNotPresent
+      env:
+        - name: KEYCLOAK_SC__SVC_NAME
+          value: http://localhost:8080
+        - name: KEYCLOAK_ADMIN_USERNAME
+          value: admin
+        - name: KEYCLOAK_ADMIN_PASSWORD
+          value: admin
+      ports:
+        - containerPort: 9991
+          name: event-sidecar
+          protocol: TCP
+...
+```
 Finally, you need to set the Superset node configuration and usernames and passwords for database connection:
 ```yaml
 ...
@@ -168,7 +188,7 @@ helm upgrade --install datalab . -f .\values.yaml
 
 If you wish to change the release name to other than `datalab`, please change the host in the redis of gitlab in the `values.yaml` file.
 
-```
+```yaml
 ...
     redis:
       host: datalab-dredis-headless
