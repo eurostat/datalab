@@ -47,4 +47,4 @@ spec:
         configMap:
           defaultMode: 0700
           name: minio-post-install-policy-update-script-configmap
-    backoffLimit: 10
+  backoffLimit: 10
