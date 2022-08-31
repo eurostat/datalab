@@ -403,7 +403,7 @@
       "enabled": true,
       "alwaysDisplayInConsole": false,
       "clientAuthenticatorType": "client-secret",
-      "secret": "{{ .Values.gitlab.clientsecret }}",
+      "secret": "7537870f-8e20-4065-a262-5da556549d02",
       "redirectUris": [
         "https://gitlab.{{ .Values.domainName }}/*"
       ],
