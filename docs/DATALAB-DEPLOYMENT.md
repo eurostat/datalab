@@ -238,3 +238,18 @@ The roles in Apache Superset are set correctly, but to get the desired outcome o
 
 - Alpha role: add `can write on Database` & `menu access SQL Lab` & `can sql json on Superset` permission
 - Gamma role: add `all database access on all_database_access` & `all datasource access on all_datasource_access` & `all query access on all_query_access` & `menu access SQL Lab` & `can sql json on Superset` permission.
+
+## Access data lab services
+
+Once the data lab is deployed and configured, you can access its services using the following URL's. Replace `example.test` by the domain you used to deploy your data lab.
+
+**Service**|**URL**
+:-----:|:-----:
+Data lab|datalab.example.test
+Keycloak|keycloak.example.test
+MinIO|minio-console.example.test
+Apache Superset|apache-superset.example.test
+Gitlab|gitlab.example.test
+CKAN|ckan.example.test
+
+
