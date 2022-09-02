@@ -30,13 +30,13 @@ Before the actual deployment, and with the [Prerequisites](#prerequisites) cover
 
 In order to install the Data Lab chart it is necessary to create your own `values.yaml` based on the default `values.yaml`, that is inside the Data Lab chart,  with your domain name, SMTP server, and passwords. You just need to search in the file for `(TODO)` and make your own configurations.
 
-First you need to set your domain name. Make sure you change all occurrences of `example.test` in the file. You can see two examples below, we emphasize that this substitution has to be done in more places:
+First you need to set your domain name. Make sure you change all occurrences of `your-domain-name.test` in the file. You can see two examples below, we emphasize that this substitution has to be done in more places:
 
 ```yaml
-domainName: "example.test"
+domainName: "your-domain-name.test"
 ...
 rules:
-  - host: "keycloak.example.test"
+  - host: "keycloak.your-domain-name.test"
 ...
 ```
 Then you need to set up the smpt server. For this, you need an email that you want to use for this purpose. Each email provider will have a different way of configuring the smtp server. So you have to check how to do it for your provider. For the gmail provider you can check the following example:
@@ -50,7 +50,7 @@ smtpServer: |-
     "port": "587",
     "host": "smtp.gmail.com",
     "from": "example@mail.com",
-    "fromDisplayName": "datalab.example.test",
+    "fromDisplayName": "datalab.your-domain-name.test",
     "ssl": "",
     "user": "example@mail.com"
   }
@@ -101,10 +101,10 @@ alertmanagerFiles:
         resolve_timeout: 5m
         http_config:
           follow_redirects: true
-        smtp_from: example.test@example.test
-        smtp_smarthost: smtp.example.test:587
-        smtp_auth_username: example.test@example.test
-        smtp_auth_password: example-password
+        smtp_from: your-domain-name.test@your-domain-name.test
+        smtp_smarthost: smtp.your-domain-name.test:587
+        smtp_auth_username: your-domain-name.test@your-domain-name.test
+        smtp_auth_password: your-domain-name.test
         smtp_require_tls: true
       route:
         receiver: default-receiver
@@ -115,7 +115,7 @@ alertmanagerFiles:
       receivers:
         - name: default-receiver
           email_configs:
-            - to: example@example.test
+            - to: example@your-domain-name.test
       templates: []
 ...
 ```
@@ -221,7 +221,7 @@ VAULT_TOKEN=<root-token> ./vault/scripts/configscript.sh
 
 And enable CORS for Onyxia access.
 ```
-curl --header "X-Vault-Token: <root-token>" --request PUT --data '{"allowed_origins": ["https://datalab.example.test", "https://vault.example.test" ]}'  https://vault.example.test/v1/sys/config/cors
+curl --header "X-Vault-Token: <root-token>" --request PUT --data '{"allowed_origins": ["https://datalab.your-domain-name.test", "https://vault.your-domain-name.test" ]}'  https://vault.your-domain-name.test/v1/sys/config/cors
 ```
 
 ## Restart MinIO
