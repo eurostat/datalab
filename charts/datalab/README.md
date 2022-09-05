@@ -62,18 +62,27 @@ While on the topic of dependencies, it is relevant to state a few considerations
 
 ## Installing the Chart
 
-```
-helm repo add eurostat-datalab https://eurostat.github.io/datalab/
-helm repo update
-helm show values eurostat-datalab/datalab > values.yaml
-```
-
 **IMPORTANT**: create your own `values.yaml` based on the default `values.yaml` with your domain name, SMTP server, and passwords.
 
 > **ATTENTION** ensure you do not commit your `values.yaml` with secrets to the SCM.
 
+Using the prompt, go to the folder where the datalab charts are located (inside the `datalab` repository main folder, in `charts`, then `datalab`).Type the command below and execute it on prompt.
+
 ```
-helm upgrade --install datalab eurostat-datalab/datalab -f values.yaml --wait
+helm upgrade --install datalab . -f .\values.yaml 
+```
+
+If you wish to change the release name to other than `datalab`, please change the host in the redis of gitlab in the `values.yaml` file.
+
+```yaml
+...
+    redis:
+      host: datalab-dredis-headless
+      password:
+        enabled: true
+        secret: gitlab-secrets
+        key: redis-password
+...
 ```
 
 After successful installation, configure HashiCorp's Vault to be used by Onyxia and Keycloak `jwt` authentication.
