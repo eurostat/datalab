@@ -4,6 +4,13 @@
 
 Taking out the central postgres for all services and choosing to launch multiple DBs takes a lot of changes to the `values.yaml`.
 
+## Deployment Issues
+We built a single Helm chart to deploy all the components of the Data Lab at once. Specific version of each of these components have been specified in the Chart.yaml file, to ensure that all versions work well together. Hence, separate update of a specific component is not posible.
+
+The use of `helm update` or `helm upgrade` is not possible in this context.
+
+In a production context, we would recommend to have a separate chart for each component to ensure more flexibility.
+
 ## Dev Issues
 
 ### Onyxia
